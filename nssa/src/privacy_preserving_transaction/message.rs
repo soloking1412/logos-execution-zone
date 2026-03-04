@@ -4,7 +4,7 @@ use nssa_core::{
     account::{Account, Nonce},
     encryption::{Ciphertext, EphemeralPublicKey, ViewingPublicKey},
 };
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 use crate::{AccountId, error::NssaError};
 
@@ -56,7 +56,7 @@ pub struct Message {
 
 impl std::fmt::Debug for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        struct HexDigest<'a>(&'a [u8; 32]);
+        struct HexDigest<'arr>(&'arr [u8; 32]);
         impl std::fmt::Debug for HexDigest<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", hex::encode(self.0))
@@ -120,7 +120,7 @@ pub mod tests {
         account::Account,
         encryption::{EphemeralPublicKey, ViewingPublicKey},
     };
-    use sha2::{Digest, Sha256};
+    use sha2::{Digest as _, Sha256};
 
     use crate::{
         AccountId,
@@ -165,7 +165,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_encrypted_account_data_constructor() {
+    fn encrypted_account_data_constructor() {
         let npk = NullifierPublicKey::from(&[1; 32]);
         let vpk = ViewingPublicKey::from_scalar([2; 32]);
         let account = Account::default();

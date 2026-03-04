@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use clap::Subcommand;
 use common::{PINATA_BASE58, transaction::NSSATransaction};
 use nssa::{Account, AccountId};
@@ -34,13 +34,13 @@ impl WalletSubcommand for PinataProgramAgnosticSubcommand {
                 match to_addr_privacy {
                     AccountPrivacyKind::Public => {
                         PinataProgramSubcommand::Public(PinataProgramSubcommandPublic::Claim {
-                            pinata_account_id: PINATA_BASE58.to_string(),
+                            pinata_account_id: PINATA_BASE58.to_owned(),
                             winner_account_id: to,
                         })
                     }
                     AccountPrivacyKind::Private => PinataProgramSubcommand::Private(
                         PinataProgramSubcommandPrivate::ClaimPrivateOwned {
-                            pinata_account_id: PINATA_BASE58.to_string(),
+                            pinata_account_id: PINATA_BASE58.to_owned(),
                             winner_account_id: to,
                         },
                     ),
@@ -242,7 +242,7 @@ async fn find_solution(wallet: &WalletCore, pinata_account_id: AccountId) -> Res
         .data
         .as_ref()
         .try_into()
-        .map_err(|_| anyhow::Error::msg("invalid pinata account data"))?;
+        .map_err(|_err| anyhow::Error::msg("invalid pinata account data"))?;
 
     println!("Computing solution for pinata...");
     let now = std::time::Instant::now();
@@ -257,7 +257,7 @@ fn compute_solution(data: [u8; 33]) -> u128 {
     let difficulty = data[0];
     let seed = &data[1..];
 
-    let mut solution = 0u128;
+    let mut solution = 0_u128;
     while !validate_solution(difficulty, seed, solution) {
         solution = solution.checked_add(1).expect("solution overflowed u128");
     }
@@ -276,6 +276,6 @@ fn validate_solution(difficulty: u8, seed: &[u8], solution: u128) -> bool {
     hasher.update(bytes);
     let digest: [u8; 32] = hasher.finalize_fixed().into();
 
-    let difficulty = difficulty as usize;
+    let difficulty = usize::from(difficulty);
     digest[..difficulty].iter().all(|&b| b == 0)
 }

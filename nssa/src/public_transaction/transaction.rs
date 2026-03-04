@@ -6,7 +6,7 @@ use nssa_core::{
     account::{Account, AccountId, AccountWithMetadata},
     program::{ChainedCall, DEFAULT_PROGRAM_ID, validate_execution},
 };
-use sha2::{Digest, digest::FixedOutput};
+use sha2::{Digest as _, digest::FixedOutput as _};
 
 use crate::{
     V02State, ensure,
@@ -216,7 +216,9 @@ impl PublicTransaction {
                 chained_calls.push_front((new_call, Some(chained_call.program_id)));
             }
 
-            chain_calls_counter += 1;
+            chain_calls_counter = chain_calls_counter
+                .checked_add(1)
+                .expect("we check the max depth at the beginning of the loop");
         }
 
         // Check that all modified uninitialized accounts where claimed
@@ -242,7 +244,7 @@ impl PublicTransaction {
 
 #[cfg(test)]
 pub mod tests {
-    use sha2::{Digest, digest::FixedOutput};
+    use sha2::{Digest as _, digest::FixedOutput as _};
 
     use crate::{
         AccountId, PrivateKey, PublicKey, PublicTransaction, Signature, V02State,
@@ -282,7 +284,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_new_constructor() {
+    fn new_constructor() {
         let tx = transaction_for_tests();
         let message = tx.message().clone();
         let witness_set = tx.witness_set().clone();
@@ -292,19 +294,19 @@ pub mod tests {
     }
 
     #[test]
-    fn test_message_getter() {
+    fn message_getter() {
         let tx = transaction_for_tests();
         assert_eq!(&tx.message, tx.message());
     }
 
     #[test]
-    fn test_witness_set_getter() {
+    fn witness_set_getter() {
         let tx = transaction_for_tests();
         assert_eq!(&tx.witness_set, tx.witness_set());
     }
 
     #[test]
-    fn test_signer_account_ids() {
+    fn signer_account_ids() {
         let tx = transaction_for_tests();
         let expected_signer_account_ids = vec![
             AccountId::new([
@@ -321,7 +323,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_public_transaction_encoding_bytes_roundtrip() {
+    fn public_transaction_encoding_bytes_roundtrip() {
         let tx = transaction_for_tests();
         let bytes = tx.to_bytes();
         let tx_from_bytes = PublicTransaction::from_bytes(&bytes).unwrap();
@@ -329,7 +331,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_hash_is_sha256_of_transaction_bytes() {
+    fn hash_is_sha256_of_transaction_bytes() {
         let tx = transaction_for_tests();
         let hash = tx.hash();
         let expected_hash: [u8; 32] = {
@@ -342,7 +344,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_account_id_list_cant_have_duplicates() {
+    fn account_id_list_cant_have_duplicates() {
         let (key1, _, addr1, _) = keys_for_tests();
         let state = state_for_tests();
         let nonces = vec![0, 0];
@@ -362,7 +364,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_number_of_nonces_must_match_number_of_signatures() {
+    fn number_of_nonces_must_match_number_of_signatures() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
         let nonces = vec![0];
@@ -382,7 +384,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_all_signatures_must_be_valid() {
+    fn all_signatures_must_be_valid() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
         let nonces = vec![0, 0];
@@ -403,7 +405,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_nonces_must_match_the_state_current_nonces() {
+    fn nonces_must_match_the_state_current_nonces() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
         let nonces = vec![0, 1];
@@ -423,7 +425,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_program_id_must_belong_to_bulitin_program_ids() {
+    fn program_id_must_belong_to_bulitin_program_ids() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
         let nonces = vec![0, 0];
