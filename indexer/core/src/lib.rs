@@ -74,13 +74,21 @@ impl IndexerCore {
             })
             .collect();
 
+        let initial_nullifiers: Vec<_> = config
+            .initial_commitments
+            .iter()
+            .map(|init_commitment_data| {
+                nssa_core::Nullifier::for_account_initialization(&init_commitment_data.npk)
+            })
+            .collect();
+
         let init_accs: Vec<(nssa::AccountId, u128)> = config
             .initial_accounts
             .iter()
             .map(|acc_data| (acc_data.account_id, acc_data.balance))
             .collect();
 
-        let mut state = nssa::V02State::new_with_genesis_accounts(&init_accs, &initial_commitments);
+        let mut state = nssa::V02State::new_with_genesis_accounts(&init_accs, &initial_commitments, &initial_nullifiers);
 
         // ToDo: Remove after testnet
         state.add_pinata_program(PINATA_BASE58.parse().unwrap());

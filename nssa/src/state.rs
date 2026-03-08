@@ -117,6 +117,7 @@ impl V02State {
     pub fn new_with_genesis_accounts(
         initial_data: &[(AccountId, u128)],
         initial_commitments: &[nssa_core::Commitment],
+        initial_nullifiers: &[nssa_core::Nullifier],
     ) -> Self {
         let authenticated_transfer_program = Program::authenticated_transfer_program();
         let public_state = initial_data
@@ -132,13 +133,16 @@ impl V02State {
             })
             .collect();
 
-        let mut private_state = CommitmentSet::with_capacity(32);
-        private_state.extend(&[DUMMY_COMMITMENT]);
-        private_state.extend(initial_commitments);
+        let mut commitment_set = CommitmentSet::with_capacity(32);
+        commitment_set.extend(&[DUMMY_COMMITMENT]);
+        commitment_set.extend(initial_commitments);
+
+        let mut nullifier_set = NullifierSet::new();
+        nullifier_set.extend(initial_nullifiers.to_owned());
 
         let mut this = Self {
             public_state,
-            private_state: (private_state, NullifierSet::new()),
+            private_state: (commitment_set, NullifierSet::new()),
             programs: HashMap::new(),
         };
 
@@ -273,6 +277,14 @@ impl V02State {
         }
         Ok(())
     }
+
+    pub fn contains_commitment(&self, commitment: &Commitment) -> bool {
+        self.private_state.0.contains(commitment)
+    }
+
+    pub fn contains_nullifier(&self, nullifier: &Nullifier) -> bool {
+        self.private_state.1.contains(nullifier)
+    }
 }
 
 // TODO: Testnet only. Refactor to prevent compilation on mainnet.
@@ -392,7 +404,7 @@ pub mod tests {
             this
         };
 
-        let state = V02State::new_with_genesis_accounts(&initial_data, &[]);
+        let state = V02State::new_with_genesis_accounts(&initial_data, &[], &[]);
 
         assert_eq!(state.public_state, expected_public_state);
         assert_eq!(state.programs, expected_builtin_programs);
@@ -400,7 +412,7 @@ pub mod tests {
 
     #[test]
     fn test_insert_program() {
-        let mut state = V02State::new_with_genesis_accounts(&[], &[]);
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[]);
         let program_to_insert = Program::simple_balance_transfer();
         let program_id = program_to_insert.id();
         assert!(!state.programs.contains_key(&program_id));
@@ -415,7 +427,7 @@ pub mod tests {
         let key = PrivateKey::try_new([1; 32]).unwrap();
         let account_id = AccountId::from(&PublicKey::new_from_private_key(&key));
         let initial_data = [(account_id, 100u128)];
-        let state = V02State::new_with_genesis_accounts(&initial_data, &[]);
+        let state = V02State::new_with_genesis_accounts(&initial_data, &[], &[]);
         let expected_account = state.public_state.get(&account_id).unwrap();
 
         let account = state.get_account_by_id(account_id);
@@ -426,7 +438,7 @@ pub mod tests {
     #[test]
     fn test_get_account_by_account_id_default_account() {
         let addr2 = AccountId::new([0; 32]);
-        let state = V02State::new_with_genesis_accounts(&[], &[]);
+        let state = V02State::new_with_genesis_accounts(&[], &[], &[]);
         let expected_account = Account::default();
 
         let account = state.get_account_by_id(addr2);
@@ -436,7 +448,7 @@ pub mod tests {
 
     #[test]
     fn test_builtin_programs_getter() {
-        let state = V02State::new_with_genesis_accounts(&[], &[]);
+        let state = V02State::new_with_genesis_accounts(&[], &[], &[]);
 
         let builtin_programs = state.programs();
 
@@ -448,7 +460,7 @@ pub mod tests {
         let key = PrivateKey::try_new([1; 32]).unwrap();
         let account_id = AccountId::from(&PublicKey::new_from_private_key(&key));
         let initial_data = [(account_id, 100)];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[]);
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[]);
         let from = account_id;
         let to = AccountId::new([2; 32]);
         assert_eq!(state.get_account_by_id(to), Account::default());
@@ -468,7 +480,7 @@ pub mod tests {
         let key = PrivateKey::try_new([1; 32]).unwrap();
         let account_id = AccountId::from(&PublicKey::new_from_private_key(&key));
         let initial_data = [(account_id, 100)];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[]);
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[]);
         let from = account_id;
         let from_key = key;
         let to = AccountId::new([2; 32]);
@@ -492,7 +504,7 @@ pub mod tests {
         let account_id1 = AccountId::from(&PublicKey::new_from_private_key(&key1));
         let account_id2 = AccountId::from(&PublicKey::new_from_private_key(&key2));
         let initial_data = [(account_id1, 100), (account_id2, 200)];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[]);
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[]);
         let from = account_id2;
         let from_key = key2;
         let to = account_id1;
@@ -515,7 +527,7 @@ pub mod tests {
         let key2 = PrivateKey::try_new([2; 32]).unwrap();
         let account_id2 = AccountId::from(&PublicKey::new_from_private_key(&key2));
         let initial_data = [(account_id1, 100)];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[]);
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[]);
         let account_id3 = AccountId::new([3; 32]);
         let balance_to_move = 5;
 
@@ -604,7 +616,7 @@ pub mod tests {
     fn test_program_should_fail_if_modifies_nonces() {
         let initial_data = [(AccountId::new([1; 32]), 100)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_ids = vec![AccountId::new([1; 32])];
         let program_id = Program::nonce_changer_program().id();
         let message =
@@ -621,7 +633,7 @@ pub mod tests {
     fn test_program_should_fail_if_output_accounts_exceed_inputs() {
         let initial_data = [(AccountId::new([1; 32]), 100)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_ids = vec![AccountId::new([1; 32])];
         let program_id = Program::extra_output_program().id();
         let message =
@@ -638,7 +650,7 @@ pub mod tests {
     fn test_program_should_fail_with_missing_output_accounts() {
         let initial_data = [(AccountId::new([1; 32]), 100)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_ids = vec![AccountId::new([1; 32]), AccountId::new([2; 32])];
         let program_id = Program::missing_output_program().id();
         let message =
@@ -655,7 +667,7 @@ pub mod tests {
     fn test_program_should_fail_if_modifies_program_owner_with_only_non_default_program_owner() {
         let initial_data = [(AccountId::new([1; 32]), 0)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_id = AccountId::new([1; 32]);
         let account = state.get_account_by_id(account_id);
         // Assert the target account only differs from the default account in the program owner
@@ -678,7 +690,7 @@ pub mod tests {
     #[test]
     fn test_program_should_fail_if_modifies_program_owner_with_only_non_default_balance() {
         let initial_data = [];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[])
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[])
             .with_test_programs()
             .with_non_default_accounts_but_default_program_owners();
         let account_id = AccountId::new([255; 32]);
@@ -702,7 +714,7 @@ pub mod tests {
     #[test]
     fn test_program_should_fail_if_modifies_program_owner_with_only_non_default_nonce() {
         let initial_data = [];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[])
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[])
             .with_test_programs()
             .with_non_default_accounts_but_default_program_owners();
         let account_id = AccountId::new([254; 32]);
@@ -726,7 +738,7 @@ pub mod tests {
     #[test]
     fn test_program_should_fail_if_modifies_program_owner_with_only_non_default_data() {
         let initial_data = [];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[])
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[])
             .with_test_programs()
             .with_non_default_accounts_but_default_program_owners();
         let account_id = AccountId::new([253; 32]);
@@ -751,7 +763,7 @@ pub mod tests {
     fn test_program_should_fail_if_transfers_balance_from_non_owned_account() {
         let initial_data = [(AccountId::new([1; 32]), 100)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let sender_account_id = AccountId::new([1; 32]);
         let receiver_account_id = AccountId::new([2; 32]);
         let balance_to_move: u128 = 1;
@@ -778,7 +790,7 @@ pub mod tests {
     #[test]
     fn test_program_should_fail_if_modifies_data_of_non_owned_account() {
         let initial_data = [];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[])
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[])
             .with_test_programs()
             .with_non_default_accounts_but_default_program_owners();
         let account_id = AccountId::new([255; 32]);
@@ -804,7 +816,7 @@ pub mod tests {
     fn test_program_should_fail_if_does_not_preserve_total_balance_by_minting() {
         let initial_data = [];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_id = AccountId::new([1; 32]);
         let program_id = Program::minter().id();
 
@@ -821,7 +833,7 @@ pub mod tests {
     #[test]
     fn test_program_should_fail_if_does_not_preserve_total_balance_by_burning() {
         let initial_data = [];
-        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[])
+        let mut state = V02State::new_with_genesis_accounts(&initial_data, &[], &[])
             .with_test_programs()
             .with_account_owned_by_burner_program();
         let program_id = Program::burner().id();
@@ -1043,7 +1055,7 @@ pub mod tests {
         let recipient_keys = test_private_account_keys_1();
 
         let mut state =
-            V02State::new_with_genesis_accounts(&[(sender_keys.account_id(), 200)], &[]);
+            V02State::new_with_genesis_accounts(&[(sender_keys.account_id(), 200)], &[], &[]);
 
         let balance_to_move = 37;
 
@@ -1089,7 +1101,7 @@ pub mod tests {
         };
         let recipient_keys = test_private_account_keys_2();
 
-        let mut state = V02State::new_with_genesis_accounts(&[], &[])
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[])
             .with_private_account(&sender_keys, &sender_private_account);
 
         let balance_to_move = 37;
@@ -1157,6 +1169,7 @@ pub mod tests {
         let recipient_initial_balance = 400;
         let mut state = V02State::new_with_genesis_accounts(
             &[(recipient_keys.account_id(), recipient_initial_balance)],
+            &[],
             &[],
         )
         .with_private_account(&sender_keys, &sender_private_account);
@@ -2133,7 +2146,7 @@ pub mod tests {
         };
         let recipient_keys = test_private_account_keys_2();
 
-        let mut state = V02State::new_with_genesis_accounts(&[], &[])
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[])
             .with_private_account(&sender_keys, &sender_private_account);
 
         let balance_to_move = 37;
@@ -2220,7 +2233,7 @@ pub mod tests {
         let initial_balance = 100;
         let initial_data = [(account_id, initial_balance)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let from = account_id;
         let from_key = key;
         let to = AccountId::new([2; 32]);
@@ -2257,7 +2270,7 @@ pub mod tests {
         let initial_balance = 1000;
         let initial_data = [(from, initial_balance), (to, 0)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let from_key = key;
         let amount: u128 = 37;
         let instruction: (u128, ProgramId, u32, Option<PdaSeed>) = (
@@ -2302,7 +2315,7 @@ pub mod tests {
         let initial_balance = 100;
         let initial_data = [(from, initial_balance), (to, 0)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let from_key = key;
         let amount: u128 = 0;
         let instruction: (u128, ProgramId, u32, Option<PdaSeed>) = (
@@ -3159,7 +3172,7 @@ pub mod tests {
     fn state_for_amm_tests() -> V02State {
         let initial_data = [];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         state.force_insert_account(
             IdForTests::pool_definition_id(),
             AccountForTests::pool_definition_init(),
@@ -3197,7 +3210,7 @@ pub mod tests {
     fn state_for_amm_tests_with_new_def() -> V02State {
         let initial_data = [];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         state.force_insert_account(
             IdForTests::token_a_definition_id(),
             AccountForTests::token_a_definition_account(),
@@ -3685,7 +3698,7 @@ pub mod tests {
         let initial_balance = 1000;
         let initial_data = [(from, initial_balance), (to, 0)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let amount: u128 = 58;
         let instruction: (u128, ProgramId, u32, Option<PdaSeed>) = (
             amount,
@@ -3731,7 +3744,7 @@ pub mod tests {
         let initial_balance = 100;
         let initial_data = [(account_id, initial_balance)];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let from = account_id;
         let from_key = key;
         let to = AccountId::new([2; 32]);
@@ -3806,6 +3819,7 @@ pub mod tests {
         let mut state = V02State::new_with_genesis_accounts(
             &[],
             &[from_commitment.clone(), to_commitment.clone()],
+            &[]
         )
         .with_test_programs();
         let amount: u128 = 37;
@@ -3913,7 +3927,7 @@ pub mod tests {
             ..Account::default()
         };
 
-        let mut state = V02State::new_with_genesis_accounts(&[], &[]);
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[]);
         state.add_pinata_token_program(pinata_definition_id);
 
         // Execution of the token program to create new token for the pinata token
@@ -3974,7 +3988,7 @@ pub mod tests {
     #[test]
     fn test_claiming_mechanism_cannot_claim_initialied_accounts() {
         let claimer = Program::claimer();
-        let mut state = V02State::new_with_genesis_accounts(&[], &[]).with_test_programs();
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[]).with_test_programs();
         let account_id = AccountId::new([2; 32]);
 
         // Insert an account with non-default program owner
@@ -4014,6 +4028,7 @@ pub mod tests {
                 (sender_id, sender_init_balance),
                 (recipient_id, recipient_init_balance),
             ],
+            &[],
             &[],
         );
 
@@ -4064,7 +4079,7 @@ pub mod tests {
 
     #[test]
     fn test_private_authorized_uninitialized_account() {
-        let mut state = V02State::new_with_genesis_accounts(&[], &[]);
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[]);
 
         // Set up keys for the authorized private account
         let private_keys = test_private_account_keys_1();
@@ -4119,7 +4134,7 @@ pub mod tests {
 
     #[test]
     fn test_private_account_claimed_then_used_without_init_flag_should_fail() {
-        let mut state = V02State::new_with_genesis_accounts(&[], &[]).with_test_programs();
+        let mut state = V02State::new_with_genesis_accounts(&[], &[], &[]).with_test_programs();
 
         // Set up keys for the private account
         let private_keys = test_private_account_keys_1();
@@ -4205,7 +4220,7 @@ pub mod tests {
     fn test_public_changer_claimer_no_data_change_no_claim_succeeds() {
         let initial_data = [];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_id = AccountId::new([1; 32]);
         let program_id = Program::changer_claimer().id();
         // Don't change data (None) and don't claim (false)
@@ -4229,7 +4244,7 @@ pub mod tests {
     fn test_public_changer_claimer_data_change_no_claim_fails() {
         let initial_data = [];
         let mut state =
-            V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let account_id = AccountId::new([1; 32]);
         let program_id = Program::changer_claimer().id();
         // Change data but don't claim (false) - should fail
@@ -4328,6 +4343,7 @@ pub mod tests {
         let state = V02State::new_with_genesis_accounts(
             &[(sender_account.account_id, sender_account.account.balance)],
             std::slice::from_ref(&recipient_commitment),
+            &[],
         )
         .with_test_programs();
 
@@ -4364,7 +4380,8 @@ pub mod tests {
         let account_id_1 = AccountId::new([1; 32]);
         let account_id_2 = AccountId::new([2; 32]);
         let initial_data = [(account_id_1, 100u128), (account_id_2, 151u128)];
-        let state = V02State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+        let state =
+            V02State::new_with_genesis_accounts(&initial_data, &[], &[]).with_test_programs();
         let bytes = borsh::to_vec(&state).unwrap();
         let state_from_bytes: V02State = borsh::from_slice(&bytes).unwrap();
         assert_eq!(state, state_from_bytes);

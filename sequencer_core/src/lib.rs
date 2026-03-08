@@ -115,13 +115,25 @@ impl<BC: BlockSettlementClientTrait, IC: IndexerClientTrait> SequencerCore<BC, I
                     })
                     .collect();
 
+                let initial_nullifiers: Vec<_> = config
+                    .initial_commitments
+                    .iter()
+                    .map(|init_commitment_data| {
+                        nssa_core::Nullifier::for_account_initialization(&init_commitment_data.npk)
+                    })
+                    .collect();
+
                 let init_accs: Vec<(nssa::AccountId, u128)> = config
                     .initial_accounts
                     .iter()
                     .map(|acc_data| (acc_data.account_id, acc_data.balance))
                     .collect();
 
-                nssa::V02State::new_with_genesis_accounts(&init_accs, &initial_commitments)
+                nssa::V02State::new_with_genesis_accounts(
+                    &init_accs,
+                    &initial_commitments,
+                    &initial_nullifiers,
+                )
             }
         };
 
@@ -475,14 +487,18 @@ mod tests {
         assert_eq!(sequencer.sequencer_config.max_num_tx_in_block, 10);
         assert_eq!(sequencer.sequencer_config.port, 8080);
 
-        let acc1_account_id = config.initial_accounts[0].account_id;
-        let acc2_account_id = config.initial_accounts[1].account_id;
+        for acc_data in &config.initial_accounts {
+            let account = sequencer.state.get_account_by_id(acc_data.account_id);
+            assert_eq!(account.balance, acc_data.balance);
+        }
 
-        let balance_acc_1 = sequencer.state.get_account_by_id(acc1_account_id).balance;
-        let balance_acc_2 = sequencer.state.get_account_by_id(acc2_account_id).balance;
-
-        assert_eq!(10000, balance_acc_1);
-        assert_eq!(20000, balance_acc_2);
+        for commitment_data in &config.initial_commitments {
+            let commitment =
+                nssa_core::Commitment::new(&commitment_data.npk, &commitment_data.account);
+            let nullifier = nssa_core::Nullifier::for_account_initialization(&commitment_data.npk);
+            assert!(sequencer.state.contains_commitment(&commitment));
+            assert!(sequencer.state.contains_nullifier(&nullifier));
+        }
     }
 
     #[tokio::test]
