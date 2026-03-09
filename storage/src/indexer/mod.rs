@@ -8,10 +8,10 @@ use rocksdb::{
 
 use crate::error::DbError;
 
-pub mod read_once;
-pub mod write_once;
 pub mod read_multi_get;
+pub mod read_once;
 pub mod write_batch;
+pub mod write_once;
 
 /// Maximal size of stored blocks in base
 ///
@@ -162,7 +162,7 @@ impl RocksDBIO {
         self.db.cf_handle(CF_ACC_META).unwrap()
     }
 
-    //State
+    // State
 
     pub fn calculate_state_for_id(&self, block_id: u64) -> DbResult<V02State> {
         let last_block = self.get_meta_last_block_in_db()?;

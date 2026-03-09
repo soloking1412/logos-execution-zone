@@ -1,7 +1,7 @@
 use super::*;
 
 impl RocksDBIO {
-    //Meta
+    // Meta
 
     pub fn put_meta_first_block_in_db(&self, block: Block) -> DbResult<()> {
         let cf_meta = self.meta_column();
@@ -118,7 +118,7 @@ impl RocksDBIO {
         Ok(())
     }
 
-    //Block
+    // Block
 
     pub fn put_block(&self, block: Block, l1_lib_header: [u8; 32]) -> DbResult<()> {
         let cf_block = self.block_column();
@@ -218,7 +218,7 @@ impl RocksDBIO {
         Ok(())
     }
 
-    //State
+    // State
 
     pub fn put_breakpoint(&self, br_id: u64, breakpoint: V02State) -> DbResult<()> {
         let cf_br = self.breakpoint_column();
