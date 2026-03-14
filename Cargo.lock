@@ -1498,22 +1498,16 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
  "borsh",
- "bytesize",
  "hex",
  "log",
  "logos-blockchain-common-http-client",
  "nssa",
  "nssa_core",
- "reqwest",
  "serde",
- "serde_json",
  "serde_with",
  "sha2",
  "thiserror 2.0.18",
- "tokio-retry",
- "url",
 ]
 
 [[package]]
@@ -3556,8 +3550,6 @@ name = "integration_tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
- "borsh",
  "bytesize",
  "common",
  "env_logger",
@@ -7200,7 +7192,6 @@ dependencies = [
  "jsonrpsee",
  "nssa",
  "nssa_core",
- "serde_json",
 ]
 
 [[package]]
@@ -8652,8 +8643,6 @@ dependencies = [
  "anyhow",
  "async-stream",
  "base58",
- "base64 0.22.1",
- "borsh",
  "clap",
  "common",
  "env_logger",
@@ -8684,7 +8673,6 @@ name = "wallet-ffi"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
- "common",
  "nssa",
  "nssa_core",
  "sequencer_service_rpc",

@@ -13,7 +13,6 @@ nssa.workspace = true
 nssa_core.workspace = true
 
 jsonrpsee = { workspace = true, features = ["macros"] }
-serde_json.workspace = true
 
 [features]
 client = ["jsonrpsee/client"]
