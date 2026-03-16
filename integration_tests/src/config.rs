@@ -234,7 +234,6 @@ pub fn wallet_config(
     initial_data: &InitialData,
 ) -> Result<WalletConfig> {
     Ok(WalletConfig {
-        override_rust_log: None,
         sequencer_addr: addr_to_url(UrlProtocol::Http, sequencer_addr)
             .context("Failed to convert sequencer addr to URL")?,
         seq_poll_timeout: Duration::from_secs(30),
