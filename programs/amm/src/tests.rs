@@ -1168,8 +1168,7 @@ impl BalanceForExeTests {
 
     fn lp_supply_init() -> u128 {
         // isqrt(vault_a_balance_init * vault_b_balance_init) = isqrt(5_000 * 2_500) = 3535
-        (BalanceForExeTests::vault_a_balance_init() * BalanceForExeTests::vault_b_balance_init())
-            .isqrt()
+        (Self::vault_a_balance_init() * Self::vault_b_balance_init()).isqrt()
     }
 }
 
@@ -1178,16 +1177,13 @@ impl IdForExeTests {
     fn pool_definition_id() -> AccountId {
         amm_core::compute_pool_pda(
             Program::amm().id(),
-            IdForExeTests::token_a_definition_id(),
-            IdForExeTests::token_b_definition_id(),
+            Self::token_a_definition_id(),
+            Self::token_b_definition_id(),
         )
     }
 
     fn token_lp_definition_id() -> AccountId {
-        amm_core::compute_liquidity_token_pda(
-            Program::amm().id(),
-            IdForExeTests::pool_definition_id(),
-        )
+        amm_core::compute_liquidity_token_pda(Program::amm().id(), Self::pool_definition_id())
     }
 
     fn token_a_definition_id() -> AccountId {
@@ -1219,16 +1215,16 @@ impl IdForExeTests {
     fn vault_a_id() -> AccountId {
         amm_core::compute_vault_pda(
             Program::amm().id(),
-            IdForExeTests::pool_definition_id(),
-            IdForExeTests::token_a_definition_id(),
+            Self::pool_definition_id(),
+            Self::token_a_definition_id(),
         )
     }
 
     fn vault_b_id() -> AccountId {
         amm_core::compute_vault_pda(
             Program::amm().id(),
-            IdForExeTests::pool_definition_id(),
-            IdForExeTests::token_b_definition_id(),
+            Self::pool_definition_id(),
+            Self::token_b_definition_id(),
         )
     }
 }
@@ -1238,7 +1234,7 @@ impl AccountsForExeTests {
     fn user_token_a_holding() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::user_token_a_holding_init(),
@@ -1250,7 +1246,7 @@ impl AccountsForExeTests {
     fn user_token_b_holding() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::user_token_b_holding_init(),
@@ -1262,7 +1258,7 @@ impl AccountsForExeTests {
     fn pool_definition_init() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1272,7 +1268,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: BalanceForExeTests::pool_lp_supply_init(),
                 reserve_a: BalanceForExeTests::vault_a_balance_init(),
                 reserve_b: BalanceForExeTests::vault_b_balance_init(),
-                fees: 0u128,
+                fees: 0_u128,
                 active: true,
             }),
             nonce: 0,
@@ -1282,7 +1278,7 @@ impl AccountsForExeTests {
     fn token_a_definition_account() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("test"),
                 total_supply: BalanceForExeTests::token_a_supply(),
@@ -1295,7 +1291,7 @@ impl AccountsForExeTests {
     fn token_b_definition_acc() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("test"),
                 total_supply: BalanceForExeTests::token_b_supply(),
@@ -1308,7 +1304,7 @@ impl AccountsForExeTests {
     fn token_lp_definition_acc() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::token_lp_supply(),
@@ -1321,7 +1317,7 @@ impl AccountsForExeTests {
     fn vault_a_init() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::vault_a_balance_init(),
@@ -1333,7 +1329,7 @@ impl AccountsForExeTests {
     fn vault_b_init() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::vault_b_balance_init(),
@@ -1345,7 +1341,7 @@ impl AccountsForExeTests {
     fn user_token_lp_holding() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_lp_definition_id(),
                 balance: BalanceForExeTests::user_token_lp_holding_init(),
@@ -1357,7 +1353,7 @@ impl AccountsForExeTests {
     fn vault_a_swap_1() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::vault_a_balance_swap_1(),
@@ -1369,7 +1365,7 @@ impl AccountsForExeTests {
     fn vault_b_swap_1() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::vault_b_balance_swap_1(),
@@ -1381,7 +1377,7 @@ impl AccountsForExeTests {
     fn pool_definition_swap_1() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1391,7 +1387,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: BalanceForExeTests::pool_lp_supply_init(),
                 reserve_a: BalanceForExeTests::vault_a_balance_swap_1(),
                 reserve_b: BalanceForExeTests::vault_b_balance_swap_1(),
-                fees: 0u128,
+                fees: 0_u128,
                 active: true,
             }),
             nonce: 0,
@@ -1401,7 +1397,7 @@ impl AccountsForExeTests {
     fn user_token_a_holding_swap_1() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::user_token_a_holding_swap_1(),
@@ -1413,7 +1409,7 @@ impl AccountsForExeTests {
     fn user_token_b_holding_swap_1() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::user_token_b_holding_swap_1(),
@@ -1425,7 +1421,7 @@ impl AccountsForExeTests {
     fn vault_a_swap_2() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::vault_a_balance_swap_2(),
@@ -1437,7 +1433,7 @@ impl AccountsForExeTests {
     fn vault_b_swap_2() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::vault_b_balance_swap_2(),
@@ -1449,7 +1445,7 @@ impl AccountsForExeTests {
     fn pool_definition_swap_2() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1459,7 +1455,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: BalanceForExeTests::pool_lp_supply_init(),
                 reserve_a: BalanceForExeTests::vault_a_balance_swap_2(),
                 reserve_b: BalanceForExeTests::vault_b_balance_swap_2(),
-                fees: 0u128,
+                fees: 0_u128,
                 active: true,
             }),
             nonce: 0,
@@ -1469,7 +1465,7 @@ impl AccountsForExeTests {
     fn user_token_a_holding_swap_2() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::user_token_a_holding_swap_2(),
@@ -1481,7 +1477,7 @@ impl AccountsForExeTests {
     fn user_token_b_holding_swap_2() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::user_token_b_holding_swap_2(),
@@ -1493,7 +1489,7 @@ impl AccountsForExeTests {
     fn vault_a_add() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::vault_a_balance_add(),
@@ -1505,7 +1501,7 @@ impl AccountsForExeTests {
     fn vault_b_add() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::vault_b_balance_add(),
@@ -1517,7 +1513,7 @@ impl AccountsForExeTests {
     fn pool_definition_add() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1527,7 +1523,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: BalanceForExeTests::token_lp_supply_add(),
                 reserve_a: BalanceForExeTests::vault_a_balance_add(),
                 reserve_b: BalanceForExeTests::vault_b_balance_add(),
-                fees: 0u128,
+                fees: 0_u128,
                 active: true,
             }),
             nonce: 0,
@@ -1537,7 +1533,7 @@ impl AccountsForExeTests {
     fn user_token_a_holding_add() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::user_token_a_holding_add(),
@@ -1549,7 +1545,7 @@ impl AccountsForExeTests {
     fn user_token_b_holding_add() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::user_token_b_holding_add(),
@@ -1561,7 +1557,7 @@ impl AccountsForExeTests {
     fn user_token_lp_holding_add() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_lp_definition_id(),
                 balance: BalanceForExeTests::user_token_lp_holding_add(),
@@ -1573,7 +1569,7 @@ impl AccountsForExeTests {
     fn token_lp_definition_add() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::token_lp_supply_add(),
@@ -1586,7 +1582,7 @@ impl AccountsForExeTests {
     fn vault_a_remove() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::vault_a_balance_remove(),
@@ -1598,7 +1594,7 @@ impl AccountsForExeTests {
     fn vault_b_remove() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::vault_b_balance_remove(),
@@ -1610,7 +1606,7 @@ impl AccountsForExeTests {
     fn pool_definition_remove() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1620,7 +1616,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: BalanceForExeTests::token_lp_supply_remove(),
                 reserve_a: BalanceForExeTests::vault_a_balance_remove(),
                 reserve_b: BalanceForExeTests::vault_b_balance_remove(),
-                fees: 0u128,
+                fees: 0_u128,
                 active: true,
             }),
             nonce: 0,
@@ -1630,7 +1626,7 @@ impl AccountsForExeTests {
     fn user_token_a_holding_remove() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::user_token_a_holding_remove(),
@@ -1642,7 +1638,7 @@ impl AccountsForExeTests {
     fn user_token_b_holding_remove() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::user_token_b_holding_remove(),
@@ -1654,7 +1650,7 @@ impl AccountsForExeTests {
     fn user_token_lp_holding_remove() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_lp_definition_id(),
                 balance: BalanceForExeTests::user_token_lp_holding_remove(),
@@ -1666,7 +1662,7 @@ impl AccountsForExeTests {
     fn token_lp_definition_remove() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::token_lp_supply_remove(),
@@ -1679,7 +1675,7 @@ impl AccountsForExeTests {
     fn token_lp_definition_init_inactive() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("LP Token"),
                 total_supply: 0,
@@ -1692,7 +1688,7 @@ impl AccountsForExeTests {
     fn vault_a_init_inactive() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: 0,
@@ -1704,7 +1700,7 @@ impl AccountsForExeTests {
     fn vault_b_init_inactive() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: 0,
@@ -1716,7 +1712,7 @@ impl AccountsForExeTests {
     fn pool_definition_inactive() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1726,7 +1722,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: 0,
                 reserve_a: 0,
                 reserve_b: 0,
-                fees: 0u128,
+                fees: 0_u128,
                 active: false,
             }),
             nonce: 0,
@@ -1736,7 +1732,7 @@ impl AccountsForExeTests {
     fn user_token_a_holding_new_init() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_a_definition_id(),
                 balance: BalanceForExeTests::user_token_a_holding_new_definition(),
@@ -1748,7 +1744,7 @@ impl AccountsForExeTests {
     fn user_token_b_holding_new_init() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_b_definition_id(),
                 balance: BalanceForExeTests::user_token_b_holding_new_definition(),
@@ -1760,7 +1756,7 @@ impl AccountsForExeTests {
     fn user_token_lp_holding_new_init() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_lp_definition_id(),
                 balance: BalanceForExeTests::lp_supply_init(),
@@ -1772,7 +1768,7 @@ impl AccountsForExeTests {
     fn token_lp_definition_new_init() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenDefinition::Fungible {
                 name: String::from("LP Token"),
                 total_supply: BalanceForExeTests::lp_supply_init(),
@@ -1785,7 +1781,7 @@ impl AccountsForExeTests {
     fn pool_definition_new_init() -> Account {
         Account {
             program_owner: Program::amm().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&PoolDefinition {
                 definition_token_a_id: IdForExeTests::token_a_definition_id(),
                 definition_token_b_id: IdForExeTests::token_b_definition_id(),
@@ -1795,7 +1791,7 @@ impl AccountsForExeTests {
                 liquidity_pool_supply: BalanceForExeTests::lp_supply_init(),
                 reserve_a: BalanceForExeTests::vault_a_balance_init(),
                 reserve_b: BalanceForExeTests::vault_b_balance_init(),
-                fees: 0u128,
+                fees: 0_u128,
                 active: true,
             }),
             nonce: 0,
@@ -1805,7 +1801,7 @@ impl AccountsForExeTests {
     fn user_token_lp_holding_init_zero() -> Account {
         Account {
             program_owner: Program::token().id(),
-            balance: 0u128,
+            balance: 0_u128,
             data: Data::from(&TokenHolding::Fungible {
                 definition_id: IdForExeTests::token_lp_definition_id(),
                 balance: 0,
@@ -2714,7 +2710,7 @@ fn state_for_amm_tests_with_new_def() -> V02State {
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_remove() {
+fn simple_amm_remove() {
     let mut state = state_for_amm_tests();
 
     let instruction = amm_core::Instruction::RemoveLiquidity {
@@ -2774,7 +2770,7 @@ fn test_simple_amm_remove() {
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_new_definition_inactive_initialized_pool_and_uninit_user_lp() {
+fn simple_amm_new_definition_inactive_initialized_pool_and_uninit_user_lp() {
     let mut state = state_for_amm_tests_with_new_def();
 
     // Uninitialized in constructor
@@ -2855,7 +2851,7 @@ fn test_simple_amm_new_definition_inactive_initialized_pool_and_uninit_user_lp()
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_new_definition_inactive_initialized_pool_init_user_lp() {
+fn simple_amm_new_definition_inactive_initialized_pool_init_user_lp() {
     let mut state = state_for_amm_tests_with_new_def();
 
     // Uninitialized in constructor
@@ -2940,7 +2936,7 @@ fn test_simple_amm_new_definition_inactive_initialized_pool_init_user_lp() {
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_new_definition_uninitialized_pool() {
+fn simple_amm_new_definition_uninitialized_pool() {
     let mut state = state_for_amm_tests_with_new_def();
 
     // Uninitialized in constructor
@@ -3013,7 +3009,7 @@ fn test_simple_amm_new_definition_uninitialized_pool() {
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_add() {
+fn simple_amm_add() {
     let mut state = state_for_amm_tests();
 
     let instruction = amm_core::Instruction::AddLiquidity {
@@ -3076,7 +3072,7 @@ fn test_simple_amm_add() {
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_swap_1() {
+fn simple_amm_swap_1() {
     let mut state = state_for_amm_tests();
 
     let instruction = amm_core::Instruction::Swap {
@@ -3128,7 +3124,7 @@ fn test_simple_amm_swap_1() {
 
 #[cfg(feature = "nssa")]
 #[test]
-fn test_simple_amm_swap_2() {
+fn simple_amm_swap_2() {
     let mut state = state_for_amm_tests();
 
     let instruction = amm_core::Instruction::Swap {
