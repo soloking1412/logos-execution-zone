@@ -2117,10 +2117,12 @@ pub mod tests {
     #[test]
     fn private_accounts_can_only_be_initialized_once() {
         let sender_keys = test_private_account_keys_1();
+        let sender_nonce = Nonce(0xdead_beef);
+
         let sender_private_account = Account {
             program_owner: Program::authenticated_transfer_program().id(),
             balance: 100,
-            nonce: Nonce(0xdead_beef),
+            nonce: sender_nonce,
             data: Data::default(),
         };
         let recipient_keys = test_private_account_keys_2();
@@ -2129,6 +2131,7 @@ pub mod tests {
             .with_private_account(&sender_keys, &sender_private_account);
 
         let balance_to_move = 37;
+        let balance_to_move_2 = 30;
 
         let tx = private_balance_transfer_for_tests(
             &sender_keys,
@@ -2144,8 +2147,8 @@ pub mod tests {
 
         let sender_private_account = Account {
             program_owner: Program::authenticated_transfer_program().id(),
-            balance: 100 - balance_to_move,
-            nonce: Nonce(0xdeaf_beef),
+            balance: 100,
+            nonce: sender_nonce,
             data: Data::default(),
         };
 
@@ -2153,7 +2156,7 @@ pub mod tests {
             &sender_keys,
             &sender_private_account,
             &recipient_keys,
-            balance_to_move,
+            balance_to_move_2,
             &state,
         );
 

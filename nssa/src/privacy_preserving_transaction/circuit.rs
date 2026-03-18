@@ -63,7 +63,7 @@ impl From<Program> for ProgramWithDependencies {
 
 /// Generates a proof of the execution of a NSSA program inside the privacy preserving execution
 /// circuit.
-#[expect(clippy::too_many_arguments, reason = "TODO: fix later")]
+/// TODO: too many parameters.
 pub fn execute_and_prove(
     pre_states: Vec<AccountWithMetadata>,
     instruction_data: InstructionData,
@@ -220,7 +220,7 @@ mod tests {
         let expected_recipient_post = Account {
             program_owner: program.id(),
             balance: balance_to_move,
-            nonce: Nonce(0xdead_beef),
+            nonce: Nonce::private_account_nonce_init(&recipient_keys.npk()),
             data: Data::default(),
         };
 

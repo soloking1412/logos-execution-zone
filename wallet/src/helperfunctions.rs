@@ -145,7 +145,7 @@ pub fn produce_data_for_storage(
     }
 }
 
-#[expect(dead_code)]
+#[expect(dead_code, reason = "Maybe used later")]
 pub(crate) fn produce_random_nonces(size: usize) -> Vec<Nonce> {
     let mut result = vec![[0; 16]; size];
     for bytes in &mut result {

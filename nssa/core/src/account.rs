@@ -256,7 +256,7 @@ mod tests {
                 .to_vec()
                 .try_into()
                 .unwrap(),
-            nonce: Nonce(0xdeadbeef),
+            nonce: Nonce(0xdead_beef),
         };
         let fingerprint = AccountId::new([8; 32]);
         let new_acc_with_metadata = AccountWithMetadata::new(account.clone(), true, fingerprint);
@@ -308,22 +308,22 @@ mod tests {
     fn initialize_private_nonce() {
         let npk = NullifierPublicKey([42; 32]);
         let nonce = Nonce::private_account_nonce_init(&npk);
-        let expected_nonce = Nonce(37937661125547691021612781941709513486);
+        let expected_nonce = Nonce(37_937_661_125_547_691_021_612_781_941_709_513_486);
         assert_eq!(nonce, expected_nonce);
     }
 
     #[test]
     fn increment_private_nonce() {
-        let nsk: NullifierSecretKey = [42u8; 32];
+        let nsk: NullifierSecretKey = [42_u8; 32];
         let nonce =
-            Nonce(37937661125547691021612781941709513486).private_account_nonce_increment(&nsk);
-        let expected_nonce = Nonce(327300903218789900388409116014290259894);
+            Nonce(37_937_661_125_547_691_021_612_781_941_709_513_486).private_account_nonce_increment(&nsk);
+        let expected_nonce = Nonce(327_300_903_218_789_900_388_409_116_014_290_259_894);
         assert_eq!(nonce, expected_nonce);
     }
 
     #[test]
     fn increment_public_nonce() {
-        let value = 42u128;
+        let value = 42_u128;
         let mut nonce = Nonce(value);
         nonce.public_account_nonce_increment();
         let expected_nonce = Nonce(value + 1);
@@ -331,8 +331,8 @@ mod tests {
     }
 
     #[test]
-    fn test_serde_roundtrip_for_nonce() {
-        let nonce: Nonce = 7u128.into();
+    fn serde_roundtrip_for_nonce() {
+        let nonce: Nonce = 7_u128.into();
 
         let serde_serialized_nonce = serde_json::to_vec(&nonce).unwrap();
 
@@ -342,8 +342,8 @@ mod tests {
     }
 
     #[test]
-    fn test_borsh_roundtrip_for_nonce() {
-        let nonce: Nonce = 7u128.into();
+    fn borsh_roundtrip_for_nonce() {
+        let nonce: Nonce = 7_u128.into();
 
         let borsh_serialized_nonce = borsh::to_vec(&nonce).unwrap();
 
