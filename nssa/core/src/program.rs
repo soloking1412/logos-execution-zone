@@ -151,6 +151,9 @@ impl AccountPostState {
     }
 }
 
+pub type BlockId = u64;
+pub type ValidityRange = (Option<BlockId> , Option<BlockId>);
+
 #[derive(Serialize, Deserialize, Clone)]
 #[cfg_attr(any(feature = "host", test), derive(Debug, PartialEq, Eq))]
 pub struct ProgramOutput {
@@ -160,7 +163,23 @@ pub struct ProgramOutput {
     pub pre_states: Vec<AccountWithMetadata>,
     pub post_states: Vec<AccountPostState>,
     pub chained_calls: Vec<ChainedCall>,
+    pub validity_range: ValidityRange,
 }
+
+impl ProgramOutput {
+    #[must_use]
+    pub const fn valid_from_id(mut self, id: BlockId) -> Self {
+        self.validity_range.0 = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub const fn valid_until_id(mut self, id: BlockId) -> Self {
+        self.validity_range.1 = Some(id);
+        self
+    }
+}
+
 
 /// Representation of a number as `lo + hi * 2^128`.
 #[derive(PartialEq, Eq)]
@@ -229,6 +248,7 @@ pub fn write_nssa_outputs(
         pre_states,
         post_states,
         chained_calls: Vec::new(),
+        validity_range: (None, None)
     };
     env::commit(&output);
 }
@@ -244,6 +264,7 @@ pub fn write_nssa_outputs_with_chained_call(
         pre_states,
         post_states,
         chained_calls,
+        validity_range: (None, None)
     };
     env::commit(&output);
 }

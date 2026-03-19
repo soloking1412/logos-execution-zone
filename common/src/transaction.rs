@@ -3,7 +3,7 @@ use log::warn;
 use nssa::{AccountId, V02State};
 use serde::{Deserialize, Serialize};
 
-use crate::HashType;
+use crate::{block::BlockId, HashType};
 
 #[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub enum NSSATransaction {
@@ -56,10 +56,11 @@ impl NSSATransaction {
     pub fn execute_check_on_state(
         self,
         state: &mut V02State,
+        block_id: BlockId
     ) -> Result<Self, nssa::error::NssaError> {
         match &self {
-            Self::Public(tx) => state.transition_from_public_transaction(tx),
-            Self::PrivacyPreserving(tx) => state.transition_from_privacy_preserving_transaction(tx),
+            Self::Public(tx) => state.transition_from_public_transaction(tx, block_id),
+            Self::PrivacyPreserving(tx) => state.transition_from_privacy_preserving_transaction(tx, block_id),
             Self::ProgramDeployment(tx) => state.transition_from_program_deployment_transaction(tx),
         }
         .inspect_err(|err| warn!("Error at transition {err:#?}"))?;

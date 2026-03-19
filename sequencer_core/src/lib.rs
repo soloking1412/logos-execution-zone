@@ -146,10 +146,12 @@ impl<BC: BlockSettlementClientTrait, IC: IndexerClientTrait> SequencerCore<BC, I
         tx: NSSATransaction,
     ) -> Result<NSSATransaction, nssa::error::NssaError> {
         match &tx {
-            NSSATransaction::Public(tx) => self.state.transition_from_public_transaction(tx),
+            NSSATransaction::Public(tx) => self
+                .state
+                .transition_from_public_transaction(tx, self.next_block_id()),
             NSSATransaction::PrivacyPreserving(tx) => self
                 .state
-                .transition_from_privacy_preserving_transaction(tx),
+                .transition_from_privacy_preserving_transaction(tx, self.next_block_id()),
             NSSATransaction::ProgramDeployment(tx) => self
                 .state
                 .transition_from_program_deployment_transaction(tx),
@@ -183,10 +185,7 @@ impl<BC: BlockSettlementClientTrait, IC: IndexerClientTrait> SequencerCore<BC, I
     ) -> Result<(SignedMantleTx, MsgId)> {
         let now = Instant::now();
 
-        let new_block_height = self
-            .chain_height
-            .checked_add(1)
-            .with_context(|| format!("Max block height reached: {}", self.chain_height))?;
+        let new_block_height = self.next_block_id();
 
         let mut valid_transactions = vec![];
 
@@ -332,6 +331,12 @@ impl<BC: BlockSettlementClientTrait, IC: IndexerClientTrait> SequencerCore<BC, I
 
     pub fn indexer_client(&self) -> IC {
         self.indexer_client.clone()
+    }
+
+    fn next_block_id(&self) -> u64 {
+        self.chain_height
+            .checked_add(1)
+            .expect(&format!("Max block height reached: {}", self.chain_height))
     }
 }
 
