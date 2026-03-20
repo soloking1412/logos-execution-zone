@@ -146,6 +146,20 @@ impl V03State {
         this.insert_program(Program::authenticated_transfer_program());
         this.insert_program(Program::token());
         this.insert_program(Program::amm());
+        this.insert_program(Program::clock());
+
+        this.force_insert_account(
+            AccountId::new(b"/LEZ/ClockProgramAccount/0000001".to_owned()),
+            Account {
+                program_owner: Program::clock().id(),
+                data: 0_u64
+                    .to_le_bytes()
+                    .to_vec()
+                    .try_into()
+                    .expect("u64 bytes should fit within accounts data"),
+                ..Account::default()
+            },
+        );
 
         this
     }
