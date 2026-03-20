@@ -13,7 +13,7 @@ use sha2::{Digest as _, digest::FixedOutput as _};
 
 use super::{message::Message, witness_set::WitnessSet};
 use crate::{
-    AccountId, V02State,
+    AccountId, V03State,
     error::NssaError,
     privacy_preserving_transaction::{circuit::Proof, message::EncryptedAccountData},
 };
@@ -35,7 +35,7 @@ impl PrivacyPreservingTransaction {
 
     pub(crate) fn validate_and_produce_public_state_diff(
         &self,
-        state: &V02State,
+        state: &V03State,
         block_id: BlockId,
     ) -> Result<HashMap<AccountId, Account>, NssaError> {
         let message = &self.message;
