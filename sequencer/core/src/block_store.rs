@@ -7,7 +7,7 @@ use common::{
     transaction::NSSATransaction,
 };
 use nssa::V03State;
-use storage::sequencer::RocksDBIO;
+use storage::{error::DbError, sequencer::RocksDBIO};
 
 pub struct SequencerStore {
     dbio: RocksDBIO,
