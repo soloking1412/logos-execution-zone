@@ -20,6 +20,10 @@ pub struct WalletChainStore {
 }
 
 impl WalletChainStore {
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "We perform search for specific variants only"
+    )]
     pub fn new(
         config: WalletConfig,
         persistent_accounts: Vec<PersistentAccountData>,
@@ -157,110 +161,48 @@ impl WalletChainStore {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr as _;
+
     use key_protocol::key_management::key_tree::{
-        keys_private::ChildKeysPrivate, keys_public::ChildKeysPublic, traits::KeyNode,
+        keys_private::ChildKeysPrivate, keys_public::ChildKeysPublic, traits::KeyNode as _,
     };
+    use nssa::PrivateKey;
 
     use super::*;
     use crate::config::{
-        InitialAccountData, PersistentAccountDataPrivate, PersistentAccountDataPublic,
+        InitialAccountData, InitialAccountDataPublic, PersistentAccountDataPrivate,
+        PersistentAccountDataPublic,
     };
 
     fn create_initial_accounts() -> Vec<InitialAccountData> {
-        let initial_acc1 = serde_json::from_str(
-            r#"{
-            "Public": {
-                "account_id": "jZvdpERLqEkzk6CAz6vDuDJ1wx5aoyFpDa1VFmRvuPX",
-                "pub_sign_key": [
-                    157,
-                    102,
-                    173,
-                    116,
-                    76,
-                    167,
-                    130,
-                    165,
-                    77,
-                    104,
-                    14,
-                    233,
-                    114,
-                    43,
-                    180,
-                    98,
-                    59,
-                    187,
-                    165,
-                    28,
-                    80,
-                    130,
-                    126,
-                    164,
-                    224,
-                    181,
-                    203,
-                    53,
-                    31,
-                    168,
-                    169,
-                    23
-                ]
-            }
-        }"#,
-        )
-        .unwrap();
-
-        let initial_acc2 = serde_json::from_str(
-            r#"{
-            "Public": {
-                "account_id": "3jQfsyRyvVpBfdkZegf8QpjfcDq1M5RAXB4H4eJ4kTtf",
-                "pub_sign_key": [
-                    230,
-                    17,
-                    4,
-                    52,
-                    87,
-                    162,
-                    72,
-                    137,
-                    119,
-                    205,
-                    163,
-                    211,
-                    118,
-                    157,
-                    15,
-                    164,
-                    67,
-                    12,
-                    124,
-                    50,
-                    159,
-                    23,
-                    184,
-                    6,
-                    109,
-                    154,
-                    2,
-                    219,
-                    147,
-                    239,
-                    125,
-                    20
-                ]
-            }
-        }"#,
-        )
-        .unwrap();
-
-        let initial_accounts = vec![initial_acc1, initial_acc2];
-
-        initial_accounts
+        vec![
+            InitialAccountData::Public(InitialAccountDataPublic {
+                account_id: nssa::AccountId::from_str(
+                    "CbgR6tj5kWx5oziiFptM7jMvrQeYY3Mzaao6ciuhSr2r",
+                )
+                .unwrap(),
+                pub_sign_key: PrivateKey::try_new([
+                    127, 39, 48, 152, 242, 91, 113, 230, 192, 5, 169, 81, 159, 38, 120, 218, 141,
+                    28, 127, 1, 246, 162, 119, 120, 226, 217, 148, 138, 189, 249, 1, 251,
+                ])
+                .unwrap(),
+            }),
+            InitialAccountData::Public(InitialAccountDataPublic {
+                account_id: nssa::AccountId::from_str(
+                    "2RHZhw9h534Zr3eq2RGhQete2Hh667foECzXPmSkGni2",
+                )
+                .unwrap(),
+                pub_sign_key: PrivateKey::try_new([
+                    244, 52, 248, 116, 23, 32, 1, 69, 134, 174, 67, 53, 109, 42, 236, 98, 87, 218,
+                    8, 98, 34, 246, 4, 221, 183, 93, 105, 115, 59, 134, 252, 76,
+                ])
+                .unwrap(),
+            }),
+        ]
     }
 
     fn create_sample_wallet_config() -> WalletConfig {
         WalletConfig {
-            override_rust_log: None,
             sequencer_addr: "http://127.0.0.1".parse().unwrap(),
             seq_poll_timeout: std::time::Duration::from_secs(12),
             seq_tx_poll_max_blocks: 5,
@@ -281,19 +223,19 @@ mod tests {
                 chain_index: ChainIndex::root(),
                 data: public_data,
             }),
-            PersistentAccountData::Private(PersistentAccountDataPrivate {
+            PersistentAccountData::Private(Box::new(PersistentAccountDataPrivate {
                 account_id: private_data.account_id(),
                 chain_index: ChainIndex::root(),
                 data: private_data,
-            }),
+            })),
         ]
     }
 
     #[test]
-    fn test_new_initializes_correctly() {
+    fn new_initializes_correctly() {
         let config = create_sample_wallet_config();
         let accs = create_sample_persistent_accounts();
 
-        let _ = WalletChainStore::new(config.clone(), accs, HashMap::new()).unwrap();
+        let _ = WalletChainStore::new(config, accs, HashMap::new()).unwrap();
     }
 }
