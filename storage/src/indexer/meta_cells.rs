@@ -16,7 +16,7 @@ impl BorshSerialize for LastBlockCell {
 
 impl BorshDeserialize for LastBlockCell {
     fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-        u64::deserialize_reader(reader).map(|val| LastBlockCell(val))
+        u64::deserialize_reader(reader).map(LastBlockCell)
     }
 }
 

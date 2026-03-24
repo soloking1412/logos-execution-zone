@@ -2,7 +2,7 @@ use std::{path::Path, sync::Arc};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use common::block::Block;
-use nssa::V02State;
+use nssa::V03State;
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBWithThreadMode, MultiThreaded, Options, WriteBatch,
 };
@@ -73,7 +73,7 @@ pub trait SimpleStorableCell: BorshSerialize + BorshDeserialize {
     fn column_ref(db: &RocksDBIO) -> Arc<BoundColumnFamily<'_>> {
         db.db
             .cf_handle(Self::CF_NAME)
-            .expect(format!("Column family {:?} must be present", Self::CF_NAME).as_str())
+            .unwrap_or_else(|| panic!("Column family {:?} must be present", Self::CF_NAME))
     }
 
     fn get(db: &RocksDBIO) -> DbResult<Self> {
@@ -158,7 +158,7 @@ impl RocksDBIO {
     pub fn open_or_create(
         path: &Path,
         genesis_block: &Block,
-        initial_state: &V02State,
+        initial_state: &V03State,
     ) -> DbResult<Self> {
         let mut cf_opts = Options::default();
         cf_opts.set_max_write_buffer_number(16);
@@ -253,33 +253,30 @@ impl RocksDBIO {
 
     // Generics
 
-    #[allow(unused)]
     fn get<T: SimpleStorableCell>(&self) -> DbResult<T> {
-        T::get(&self)
+        T::get(self)
     }
 
-    #[allow(unused)]
+    #[expect(unused, reason = "Unused")]
     fn get_opt<T: SimpleStorableCell>(&self) -> DbResult<Option<T>> {
-        T::get_opt(&self)
+        T::get_opt(self)
     }
 
-    #[allow(unused)]
-    fn put<T: SimpleStorableCell>(&self, cell: T) -> DbResult<()> {
-        cell.put(&self)
+    fn put<T: SimpleStorableCell>(&self, cell: &T) -> DbResult<()> {
+        cell.put(self)
     }
 
-    #[allow(unused)]
     fn put_batch<T: SimpleStorableCell>(
         &self,
-        cell: T,
+        cell: &T,
         write_batch: &mut WriteBatch,
     ) -> DbResult<()> {
-        cell.put_batch(&self, write_batch)
+        cell.put_batch(self, write_batch)
     }
 
     // State
 
-    pub fn calculate_state_for_id(&self, block_id: u64) -> DbResult<V02State> {
+    pub fn calculate_state_for_id(&self, block_id: u64) -> DbResult<V03State> {
         let last_block = self.get_meta_last_block_in_db()?;
 
         if block_id <= last_block {
@@ -324,7 +321,7 @@ impl RocksDBIO {
         }
     }
 
-    pub fn final_state(&self) -> DbResult<V02State> {
+    pub fn final_state(&self) -> DbResult<V03State> {
         self.calculate_state_for_id(self.get_meta_last_block_in_db()?)
     }
 }
@@ -372,7 +369,7 @@ mod tests {
         let dbio = RocksDBIO::open_or_create(
             temdir_path,
             &genesis_block(),
-            &nssa::V02State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
+            &nssa::V03State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
         )
         .unwrap();
 
@@ -381,7 +378,7 @@ mod tests {
         let is_first_set = dbio.get_meta_is_first_block_set().unwrap();
         let last_observed_l1_header = dbio.get_meta_last_observed_l1_lib_header_in_db().unwrap();
         let last_br_id = dbio.get_meta_last_breakpoint_id().unwrap();
-        let last_block = dbio.get_block(1).unwrap();
+        let last_block = dbio.get_block(1).unwrap().unwrap();
         let breakpoint = dbio.get_breakpoint(0).unwrap();
         let final_state = dbio.final_state().unwrap();
 
@@ -409,7 +406,7 @@ mod tests {
         let dbio = RocksDBIO::open_or_create(
             temdir_path,
             &genesis_block(),
-            &nssa::V02State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
+            &nssa::V03State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
         )
         .unwrap();
 
@@ -432,7 +429,7 @@ mod tests {
             .unwrap();
         let is_first_set = dbio.get_meta_is_first_block_set().unwrap();
         let last_br_id = dbio.get_meta_last_breakpoint_id().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
         let breakpoint = dbio.get_breakpoint(0).unwrap();
         let final_state = dbio.final_state().unwrap();
 
@@ -462,7 +459,7 @@ mod tests {
         let dbio = RocksDBIO::open_or_create(
             temdir_path,
             &genesis_block(),
-            &nssa::V02State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
+            &nssa::V03State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
         )
         .unwrap();
 
@@ -472,7 +469,7 @@ mod tests {
 
         for i in 1..=BREAKPOINT_INTERVAL {
             let last_id = dbio.get_meta_last_block_in_db().unwrap();
-            let last_block = dbio.get_block(last_id).unwrap();
+            let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
             let prev_hash = last_block.header.hash;
 
@@ -495,7 +492,7 @@ mod tests {
         let first_id = dbio.get_meta_first_block_in_db().unwrap();
         let is_first_set = dbio.get_meta_is_first_block_set().unwrap();
         let last_br_id = dbio.get_meta_last_breakpoint_id().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
         let prev_breakpoint = dbio.get_breakpoint(0).unwrap();
         let breakpoint = dbio.get_breakpoint(1).unwrap();
         let final_state = dbio.final_state().unwrap();
@@ -535,7 +532,7 @@ mod tests {
         let dbio = RocksDBIO::open_or_create(
             temdir_path,
             &genesis_block(),
-            &nssa::V02State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
+            &nssa::V03State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
         )
         .unwrap();
 
@@ -544,7 +541,7 @@ mod tests {
         let sign_key = acc1_sign_key();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -556,7 +553,7 @@ mod tests {
         dbio.put_block(&block, [1; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -568,7 +565,7 @@ mod tests {
         dbio.put_block(&block, [2; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -580,7 +577,7 @@ mod tests {
         dbio.put_block(&block, [3; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -591,10 +588,16 @@ mod tests {
         let block = common::test_utils::produce_dummy_block(5, Some(prev_hash), vec![transfer_tx]);
         dbio.put_block(&block, [4; 32]).unwrap();
 
-        let control_block_id1 = dbio.get_block_id_by_hash(control_hash1.0).unwrap();
-        let control_block_id2 = dbio.get_block_id_by_hash(control_hash2.0).unwrap();
-        let control_block_id3 = dbio.get_block_id_by_tx_hash(control_tx_hash1.0).unwrap();
-        let control_block_id4 = dbio.get_block_id_by_tx_hash(control_tx_hash2.0).unwrap();
+        let control_block_id1 = dbio.get_block_id_by_hash(control_hash1.0).unwrap().unwrap();
+        let control_block_id2 = dbio.get_block_id_by_hash(control_hash2.0).unwrap().unwrap();
+        let control_block_id3 = dbio
+            .get_block_id_by_tx_hash(control_tx_hash1.0)
+            .unwrap()
+            .unwrap();
+        let control_block_id4 = dbio
+            .get_block_id_by_tx_hash(control_tx_hash2.0)
+            .unwrap()
+            .unwrap();
 
         assert_eq!(control_block_id1, 2);
         assert_eq!(control_block_id2, 3);
@@ -612,7 +615,7 @@ mod tests {
         let dbio = RocksDBIO::open_or_create(
             temdir_path,
             &genesis_block(),
-            &nssa::V02State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
+            &nssa::V03State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
         )
         .unwrap();
 
@@ -621,7 +624,7 @@ mod tests {
         let sign_key = acc1_sign_key();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -632,7 +635,7 @@ mod tests {
         dbio.put_block(&block, [1; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -643,7 +646,7 @@ mod tests {
         dbio.put_block(&block, [2; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -654,7 +657,7 @@ mod tests {
         dbio.put_block(&block, [3; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =
@@ -708,7 +711,7 @@ mod tests {
         let dbio = RocksDBIO::open_or_create(
             temdir_path,
             &genesis_block(),
-            &nssa::V02State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
+            &nssa::V03State::new_with_genesis_accounts(&[(acc1(), 10000), (acc2(), 20000)], &[]),
         )
         .unwrap();
 
@@ -719,7 +722,7 @@ mod tests {
         let mut tx_hash_res = vec![];
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx1 =
@@ -738,7 +741,7 @@ mod tests {
         dbio.put_block(&block, [1; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx1 =
@@ -757,7 +760,7 @@ mod tests {
         dbio.put_block(&block, [2; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx1 =
@@ -776,7 +779,7 @@ mod tests {
         dbio.put_block(&block, [3; 32]).unwrap();
 
         let last_id = dbio.get_meta_last_block_in_db().unwrap();
-        let last_block = dbio.get_block(last_id).unwrap();
+        let last_block = dbio.get_block(last_id).unwrap().unwrap();
 
         let prev_hash = last_block.header.hash;
         let transfer_tx =

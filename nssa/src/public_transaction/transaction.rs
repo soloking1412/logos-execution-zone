@@ -9,7 +9,7 @@ use nssa_core::{
 use sha2::{Digest as _, digest::FixedOutput as _};
 
 use crate::{
-    V02State, ensure,
+    V03State, ensure,
     error::NssaError,
     public_transaction::{Message, WitnessSet},
     state::MAX_NUMBER_CHAINED_CALLS,
@@ -69,7 +69,7 @@ impl PublicTransaction {
 
     pub(crate) fn validate_and_produce_public_state_diff(
         &self,
-        state: &V02State,
+        state: &V03State,
     ) -> Result<HashMap<AccountId, Account>, NssaError> {
         let message = self.message();
         let witness_set = self.witness_set();
@@ -247,7 +247,7 @@ pub mod tests {
     use sha2::{Digest as _, digest::FixedOutput as _};
 
     use crate::{
-        AccountId, PrivateKey, PublicKey, PublicTransaction, Signature, V02State,
+        AccountId, PrivateKey, PublicKey, PublicTransaction, Signature, V03State,
         error::NssaError,
         program::Program,
         public_transaction::{Message, WitnessSet},
@@ -261,15 +261,15 @@ pub mod tests {
         (key1, key2, addr1, addr2)
     }
 
-    fn state_for_tests() -> V02State {
+    fn state_for_tests() -> V03State {
         let (_, _, addr1, addr2) = keys_for_tests();
         let initial_data = [(addr1, 10000), (addr2, 20000)];
-        V02State::new_with_genesis_accounts(&initial_data, &[])
+        V03State::new_with_genesis_accounts(&initial_data, &[])
     }
 
     fn transaction_for_tests() -> PublicTransaction {
         let (key1, key2, addr1, addr2) = keys_for_tests();
-        let nonces = vec![0, 0];
+        let nonces = vec![0_u128.into(), 0_u128.into()];
         let instruction = 1337;
         let message = Message::try_new(
             Program::authenticated_transfer_program().id(),
@@ -347,7 +347,7 @@ pub mod tests {
     fn account_id_list_cant_have_duplicates() {
         let (key1, _, addr1, _) = keys_for_tests();
         let state = state_for_tests();
-        let nonces = vec![0, 0];
+        let nonces = vec![0_u128.into(), 0_u128.into()];
         let instruction = 1337;
         let message = Message::try_new(
             Program::authenticated_transfer_program().id(),
@@ -367,7 +367,7 @@ pub mod tests {
     fn number_of_nonces_must_match_number_of_signatures() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
-        let nonces = vec![0];
+        let nonces = vec![0_u128.into()];
         let instruction = 1337;
         let message = Message::try_new(
             Program::authenticated_transfer_program().id(),
@@ -387,7 +387,7 @@ pub mod tests {
     fn all_signatures_must_be_valid() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
-        let nonces = vec![0, 0];
+        let nonces = vec![0_u128.into(), 0_u128.into()];
         let instruction = 1337;
         let message = Message::try_new(
             Program::authenticated_transfer_program().id(),
@@ -408,7 +408,7 @@ pub mod tests {
     fn nonces_must_match_the_state_current_nonces() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
-        let nonces = vec![0, 1];
+        let nonces = vec![0_u128.into(), 1_u128.into()];
         let instruction = 1337;
         let message = Message::try_new(
             Program::authenticated_transfer_program().id(),
@@ -428,7 +428,7 @@ pub mod tests {
     fn program_id_must_belong_to_bulitin_program_ids() {
         let (key1, key2, addr1, addr2) = keys_for_tests();
         let state = state_for_tests();
-        let nonces = vec![0, 0];
+        let nonces = vec![0_u128.into(), 0_u128.into()];
         let instruction = 1337;
         let unknown_program_id = [0xdead_beef; 8];
         let message =

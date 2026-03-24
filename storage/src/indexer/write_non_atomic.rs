@@ -1,6 +1,6 @@
 use super::{
     BREAKPOINT_INTERVAL, DB_META_FIRST_BLOCK_SET_KEY, DB_META_LAST_BREAKPOINT_ID,
-    DB_META_LAST_OBSERVED_L1_LIB_HEADER_ID_IN_DB_KEY, DbError, DbResult, RocksDBIO, V02State,
+    DB_META_LAST_OBSERVED_L1_LIB_HEADER_ID_IN_DB_KEY, DbError, DbResult, RocksDBIO, V03State,
 };
 use crate::indexer::meta_cells::LastBlockCell;
 
@@ -9,7 +9,7 @@ impl RocksDBIO {
     // Meta
 
     pub fn put_meta_last_block_in_db(&self, block_id: u64) -> DbResult<()> {
-        self.put(LastBlockCell(block_id))
+        self.put(&LastBlockCell(block_id))
     }
 
     pub fn put_meta_last_observed_l1_lib_header_in_db(
@@ -83,7 +83,7 @@ impl RocksDBIO {
 
     // State
 
-    pub fn put_breakpoint(&self, br_id: u64, breakpoint: &V02State) -> DbResult<()> {
+    pub fn put_breakpoint(&self, br_id: u64, breakpoint: &V03State) -> DbResult<()> {
         let cf_br = self.breakpoint_column();
 
         self.db

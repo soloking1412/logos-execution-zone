@@ -164,7 +164,7 @@ impl RocksDBIO {
         block_id: u64,
         write_batch: &mut WriteBatch,
     ) -> DbResult<()> {
-        self.put_batch(LastBlockCell(block_id), write_batch)
+        self.put_batch(&LastBlockCell(block_id), write_batch)
     }
 
     pub fn put_meta_last_observed_l1_lib_header_in_db_batch(
