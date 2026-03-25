@@ -43,6 +43,23 @@ impl NSSATransaction {
         }
     }
 
+    /// Returns the canonical Block Context Program invocation transaction.
+    /// Every valid block must end with exactly one occurrence of this transaction.
+    #[must_use]
+    pub fn clock_invocation() -> Self {
+        let message = nssa::public_transaction::Message::try_new(
+            nssa::program::Program::clock().id(),
+            vec![nssa::CLOCK_PROGRAM_ACCOUNT_ID],
+            vec![],
+            (),
+        )
+        .expect("Clock invocation message should always be constructable");
+        Self::Public(nssa::PublicTransaction::new(
+            message,
+            nssa::public_transaction::WitnessSet::from_raw_parts(vec![]),
+        ))
+    }
+
     // TODO: Introduce type-safe wrapper around checked transaction, e.g. AuthenticatedTransaction
     pub fn transaction_stateless_check(self) -> Result<Self, TransactionMalformationError> {
         // Stateless checks here

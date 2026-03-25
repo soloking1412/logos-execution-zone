@@ -119,6 +119,30 @@ impl IndexerStore {
 
     pub async fn put_block(&self, mut block: Block, l1_header: HeaderId) -> Result<()> {
         {
+            let canonical_clock_tx = NSSATransaction::clock_invocation();
+
+            // Validate block structure: the last transaction must be the sole clock invocation.
+            let last_tx = block
+                .body
+                .transactions
+                .last()
+                .ok_or_else(|| anyhow::anyhow!("Block must contain at least one transaction"))?;
+            anyhow::ensure!(
+                last_tx == &canonical_clock_tx,
+                "Last transaction in block must be the canonical clock invocation"
+            );
+
+            let clock_count = block
+                .body
+                .transactions
+                .iter()
+                .filter(|tx| *tx == &canonical_clock_tx)
+                .count();
+            anyhow::ensure!(
+                clock_count == 1,
+                "Block must contain exactly one Block Context Program invocation"
+            );
+
             let mut state_guard = self.current_state.write().await;
 
             for transaction in &block.body.transactions {
@@ -208,11 +232,12 @@ mod tests {
                 10,
                 &sign_key,
             );
+            let clock_tx = NSSATransaction::clock_invocation();
 
             let next_block = common::test_utils::produce_dummy_block(
                 u64::try_from(i).unwrap(),
                 Some(prev_hash),
-                vec![tx],
+                vec![tx, clock_tx],
             );
             prev_hash = next_block.header.hash;
 

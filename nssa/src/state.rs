@@ -16,6 +16,9 @@ use crate::{
 
 pub const MAX_NUMBER_CHAINED_CALLS: usize = 10;
 
+pub const CLOCK_PROGRAM_ACCOUNT_ID: AccountId =
+    AccountId::new(*b"/LEZ/ClockProgramAccount/0000001");
+
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 pub struct CommitmentSet {
@@ -148,8 +151,8 @@ impl V03State {
         this.insert_program(Program::amm());
         this.insert_program(Program::clock());
 
-        this.force_insert_account(
-            AccountId::new(b"/LEZ/ClockProgramAccount/0000001".to_owned()),
+        this.public_state.insert(
+            CLOCK_PROGRAM_ACCOUNT_ID,
             Account {
                 program_owner: Program::clock().id(),
                 data: 0_u64
