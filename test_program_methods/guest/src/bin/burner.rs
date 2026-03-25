@@ -19,6 +19,10 @@ fn main() {
     let mut account_post = account_pre.clone();
     account_post.balance = account_post.balance.saturating_sub(balance_to_burn);
 
-    ProgramOutput::new(instruction_words, vec![pre], vec![AccountPostState::new(account_post)])
-        .write();
+    ProgramOutput::new(
+        instruction_words,
+        vec![pre],
+        vec![AccountPostState::new(account_post)],
+    )
+    .write();
 }

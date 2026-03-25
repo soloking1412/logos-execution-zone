@@ -16,6 +16,10 @@ fn main() {
         .checked_add(1)
         .expect("Balance overflow");
 
-    ProgramOutput::new(instruction_words, vec![pre], vec![AccountPostState::new(account_post)])
-        .write();
+    ProgramOutput::new(
+        instruction_words,
+        vec![pre],
+        vec![AccountPostState::new(account_post)],
+    )
+    .write();
 }

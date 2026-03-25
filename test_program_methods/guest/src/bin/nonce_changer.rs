@@ -13,6 +13,10 @@ fn main() {
     let mut account_post = account_pre.clone();
     account_post.nonce.public_account_nonce_increment();
 
-    ProgramOutput::new(instruction_words, vec![pre], vec![AccountPostState::new(account_post)])
-        .write();
+    ProgramOutput::new(
+        instruction_words,
+        vec![pre],
+        vec![AccountPostState::new(account_post)],
+    )
+    .write();
 }

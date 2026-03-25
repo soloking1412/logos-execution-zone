@@ -205,14 +205,16 @@ impl ValidityWindow {
         self.to
     }
 
-    /// Sets the inclusive lower bound. Returns `Err` if the updated window would be empty or inverted.
+    /// Sets the inclusive lower bound. Returns `Err` if the updated window would be empty or
+    /// inverted.
     pub fn set_from(&mut self, id: Option<BlockId>) -> Result<(), InvalidWindow> {
         let prev = self.from;
         self.from = id;
         self.check_window().inspect_err(|_| self.from = prev)
     }
 
-    /// Sets the exclusive upper bound. Returns `Err` if the updated window would be empty or inverted.
+    /// Sets the exclusive upper bound. Returns `Err` if the updated window would be empty or
+    /// inverted.
     pub fn set_to(&mut self, id: Option<BlockId>) -> Result<(), InvalidWindow> {
         let prev = self.to;
         self.to = id;

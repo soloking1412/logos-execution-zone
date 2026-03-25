@@ -292,6 +292,12 @@ mod tests {
             // `program_methods`
             Self::new(VALIDITY_WINDOW_ELF.to_vec()).unwrap()
         }
+
+        #[must_use]
+        pub fn validity_window_chain_caller() -> Self {
+            use test_program_methods::VALIDITY_WINDOW_CHAIN_CALLER_ELF;
+            Self::new(VALIDITY_WINDOW_CHAIN_CALLER_ELF.to_vec()).unwrap()
+        }
     }
 
     #[test]
