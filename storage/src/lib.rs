@@ -5,8 +5,6 @@ pub mod indexer;
 pub mod sequencer;
 pub mod storable_cell;
 
-pub type DbResult<T> = Result<T, DbError>;
-
 // General
 
 /// Maximal size of stored blocks in base.
@@ -67,3 +65,5 @@ pub const DB_NSSA_STATE_KEY: &str = "nssa_state";
 
 /// Name of state column family.
 pub const CF_NSSA_STATE_NAME: &str = "cf_nssa_state";
+
+pub type DbResult<T> = Result<T, DbError>;

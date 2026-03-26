@@ -8,8 +8,9 @@ use rocksdb::{
 
 use crate::{
     BREAKPOINT_INTERVAL, CF_ACC_META, CF_ACC_TO_TX, CF_BLOCK_NAME, CF_BREAKPOINT_NAME,
-    CF_HASH_TO_ID, CF_META_NAME, CF_TX_TO_ID, DbResult, error::DbError,
-    storable_cell::SimpleStorableCell,
+    CF_HASH_TO_ID, CF_META_NAME, CF_TX_TO_ID, DbResult,
+    error::DbError,
+    storable_cell::{SimpleReadableCell, SimpleWritableCell},
 };
 
 pub mod read_multiple;
@@ -120,25 +121,25 @@ impl RocksDBIO {
 
     // Generics
 
-    fn get<T: SimpleStorableCell>(&self) -> DbResult<T> {
-        T::get(&self.db)
+    fn get<T: SimpleReadableCell>(&self, params: T::KeyParams) -> DbResult<T> {
+        T::get(&self.db, params)
     }
 
-    #[expect(unused, reason = "Unused")]
-    fn get_opt<T: SimpleStorableCell>(&self) -> DbResult<Option<T>> {
-        T::get_opt(&self.db)
+    fn get_opt<T: SimpleReadableCell>(&self, params: T::KeyParams) -> DbResult<Option<T>> {
+        T::get_opt(&self.db, params)
     }
 
-    fn put<T: SimpleStorableCell>(&self, cell: &T) -> DbResult<()> {
-        cell.put(&self.db)
+    fn put<T: SimpleWritableCell>(&self, cell: &T, params: T::KeyParams) -> DbResult<()> {
+        cell.put(&self.db, params)
     }
 
-    fn put_batch<T: SimpleStorableCell>(
+    fn put_batch<T: SimpleWritableCell>(
         &self,
         cell: &T,
+        params: T::KeyParams,
         write_batch: &mut WriteBatch,
     ) -> DbResult<()> {
-        cell.put_batch(&self.db, write_batch)
+        cell.put_batch(&self.db, params, write_batch)
     }
 
     // State

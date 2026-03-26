@@ -1,8 +1,7 @@
 use super::{BREAKPOINT_INTERVAL, DbError, DbResult, RocksDBIO, V03State};
-use crate::{
-    DB_META_FIRST_BLOCK_SET_KEY, DB_META_LAST_BREAKPOINT_ID,
-    DB_META_LAST_OBSERVED_L1_LIB_HEADER_ID_IN_DB_KEY,
-    storable_cell::cells::meta_shared::LastBlockCell,
+use crate::storable_cell::cells::{
+    meta_indexer::{BreakpointCellRef, LastBreakpointIdCell, LastObservedL1LibHeaderCell},
+    meta_shared::{FirstBlockSetCell, LastBlockCell},
 };
 
 #[expect(clippy::multiple_inherent_impl, reason = "Readability")]
@@ -10,100 +9,28 @@ impl RocksDBIO {
     // Meta
 
     pub fn put_meta_last_block_in_db(&self, block_id: u64) -> DbResult<()> {
-        self.put(&LastBlockCell(block_id))
+        self.put(&LastBlockCell(block_id), ())
     }
 
     pub fn put_meta_last_observed_l1_lib_header_in_db(
         &self,
         l1_lib_header: [u8; 32],
     ) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        self.db
-            .put_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_LAST_OBSERVED_L1_LIB_HEADER_ID_IN_DB_KEY).map_err(
-                    |err| {
-                        DbError::borsh_cast_message(
-                        err,
-                        Some(
-                            "Failed to serialize DB_META_LAST_OBSERVED_L1_LIB_HEADER_ID_IN_DB_KEY"
-                                .to_owned(),
-                        ),
-                    )
-                    },
-                )?,
-                borsh::to_vec(&l1_lib_header).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize last l1 block header".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-        Ok(())
+        self.put(&LastObservedL1LibHeaderCell(l1_lib_header), ())
     }
 
     pub fn put_meta_last_breakpoint_id(&self, br_id: u64) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        self.db
-            .put_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_LAST_BREAKPOINT_ID).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_LAST_BREAKPOINT_ID".to_owned()),
-                    )
-                })?,
-                borsh::to_vec(&br_id).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize last block id".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-        Ok(())
+        self.put(&LastBreakpointIdCell(br_id), ())
     }
 
     pub fn put_meta_is_first_block_set(&self) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        self.db
-            .put_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_FIRST_BLOCK_SET_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_FIRST_BLOCK_SET_KEY".to_owned()),
-                    )
-                })?,
-                [1_u8; 1],
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-        Ok(())
+        self.put(&FirstBlockSetCell(true), ())
     }
 
     // State
 
     pub fn put_breakpoint(&self, br_id: u64, breakpoint: &V03State) -> DbResult<()> {
-        let cf_br = self.breakpoint_column();
-
-        self.db
-            .put_cf(
-                &cf_br,
-                borsh::to_vec(&br_id).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize breakpoint id".to_owned()),
-                    )
-                })?,
-                borsh::to_vec(breakpoint).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize breakpoint data".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))
+        self.put(&BreakpointCellRef(breakpoint), br_id)
     }
 
     pub fn put_next_breakpoint(&self) -> DbResult<()> {

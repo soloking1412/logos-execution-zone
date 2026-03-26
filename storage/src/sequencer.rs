@@ -8,10 +8,17 @@ use rocksdb::{
 
 use crate::{
     CF_BLOCK_NAME, CF_META_NAME, CF_NSSA_STATE_NAME, DB_META_FIRST_BLOCK_IN_DB_KEY,
-    DB_META_FIRST_BLOCK_SET_KEY, DB_META_LAST_FINALIZED_BLOCK_ID, DB_META_LATEST_BLOCK_META_KEY,
-    DB_NSSA_STATE_KEY,
     error::DbError,
-    storable_cell::{SimpleStorableCell, cells::meta_shared::LastBlockCell},
+    storable_cell::{
+        SimpleReadableCell, SimpleWritableCell,
+        cells::{
+            meta_sequencer::{
+                LastFinalizedBlockIdCell, LatestBlockMetaCellOwned, LatestBlockMetaCellRef,
+                NSSAStateCellOwned, NSSAStateCellRef,
+            },
+            meta_shared::{BlockCell, FirstBlockCell, FirstBlockSetCell, LastBlockCell},
+        },
+    },
 };
 
 pub type DbResult<T> = Result<T, DbError>;
@@ -80,108 +87,65 @@ impl RocksDBIO {
             .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))
     }
 
+    // Columns
+
     pub fn meta_column(&self) -> Arc<BoundColumnFamily<'_>> {
-        self.db.cf_handle(CF_META_NAME).unwrap()
+        self.db
+            .cf_handle(CF_META_NAME)
+            .expect("Meta column should exist")
     }
 
     pub fn block_column(&self) -> Arc<BoundColumnFamily<'_>> {
-        self.db.cf_handle(CF_BLOCK_NAME).unwrap()
+        self.db
+            .cf_handle(CF_BLOCK_NAME)
+            .expect("Block column should exist")
     }
 
     pub fn nssa_state_column(&self) -> Arc<BoundColumnFamily<'_>> {
-        self.db.cf_handle(CF_NSSA_STATE_NAME).unwrap()
+        self.db
+            .cf_handle(CF_NSSA_STATE_NAME)
+            .expect("State should exist")
     }
 
     // Generics
 
-    fn get<T: SimpleStorableCell>(&self) -> DbResult<T> {
-        T::get(&self.db)
+    fn get<T: SimpleReadableCell>(&self, params: T::KeyParams) -> DbResult<T> {
+        T::get(&self.db, params)
     }
 
-    #[expect(unused, reason = "Unused")]
-    fn get_opt<T: SimpleStorableCell>(&self) -> DbResult<Option<T>> {
-        T::get_opt(&self.db)
+    fn get_opt<T: SimpleReadableCell>(&self, params: T::KeyParams) -> DbResult<Option<T>> {
+        T::get_opt(&self.db, params)
     }
 
-    fn put<T: SimpleStorableCell>(&self, cell: &T) -> DbResult<()> {
-        cell.put(&self.db)
+    fn put<T: SimpleWritableCell>(&self, cell: &T, params: T::KeyParams) -> DbResult<()> {
+        cell.put(&self.db, params)
     }
 
-    fn put_batch<T: SimpleStorableCell>(
+    fn put_batch<T: SimpleWritableCell>(
         &self,
         cell: &T,
+        params: T::KeyParams,
         write_batch: &mut WriteBatch,
     ) -> DbResult<()> {
-        cell.put_batch(&self.db, write_batch)
+        cell.put_batch(&self.db, params, write_batch)
     }
 
-    pub fn get_meta_first_block_in_db(&self) -> DbResult<u64> {
-        let cf_meta = self.meta_column();
-        let res = self
-            .db
-            .get_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_FIRST_BLOCK_IN_DB_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_FIRST_BLOCK_IN_DB_KEY".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
+    // Meta
 
-        if let Some(data) = res {
-            Ok(borsh::from_slice::<u64>(&data).map_err(|err| {
-                DbError::borsh_cast_message(
-                    err,
-                    Some("Failed to deserialize first block".to_owned()),
-                )
-            })?)
-        } else {
-            Err(DbError::db_interaction_error(
-                "First block not found".to_owned(),
-            ))
-        }
+    pub fn get_meta_first_block_in_db(&self) -> DbResult<u64> {
+        self.get::<FirstBlockCell>(()).map(|cell| cell.0)
     }
 
     pub fn get_meta_last_block_in_db(&self) -> DbResult<u64> {
-        self.get::<LastBlockCell>().map(|cell| cell.0)
+        self.get::<LastBlockCell>(()).map(|cell| cell.0)
     }
 
     pub fn get_meta_is_first_block_set(&self) -> DbResult<bool> {
-        let cf_meta = self.meta_column();
-        let res = self
-            .db
-            .get_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_FIRST_BLOCK_SET_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_FIRST_BLOCK_SET_KEY".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-
-        Ok(res.is_some())
+        Ok(self.get_opt::<FirstBlockSetCell>(())?.is_some())
     }
 
     pub fn put_nssa_state_in_db(&self, state: &V03State, batch: &mut WriteBatch) -> DbResult<()> {
-        let cf_nssa_state = self.nssa_state_column();
-        batch.put_cf(
-            &cf_nssa_state,
-            borsh::to_vec(&DB_NSSA_STATE_KEY).map_err(|err| {
-                DbError::borsh_cast_message(
-                    err,
-                    Some("Failed to serialize DB_NSSA_STATE_KEY".to_owned()),
-                )
-            })?,
-            borsh::to_vec(state).map_err(|err| {
-                DbError::borsh_cast_message(err, Some("Failed to serialize NSSA state".to_owned()))
-            })?,
-        );
-
-        Ok(())
+        self.put_batch(&NSSAStateCellRef(state), (), batch)
     }
 
     pub fn put_meta_first_block_in_db(&self, block: &Block, msg_id: MantleMsgId) -> DbResult<()> {
@@ -217,7 +181,7 @@ impl RocksDBIO {
     }
 
     pub fn put_meta_last_block_in_db(&self, block_id: u64) -> DbResult<()> {
-        self.put(&LastBlockCell(block_id))
+        self.put(&LastBlockCell(block_id), ())
     }
 
     fn put_meta_last_block_in_db_batch(
@@ -225,68 +189,19 @@ impl RocksDBIO {
         block_id: u64,
         batch: &mut WriteBatch,
     ) -> DbResult<()> {
-        self.put_batch(&LastBlockCell(block_id), batch)
+        self.put_batch(&LastBlockCell(block_id), (), batch)
     }
 
     pub fn put_meta_last_finalized_block_id(&self, block_id: Option<u64>) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        self.db
-            .put_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_LAST_FINALIZED_BLOCK_ID).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_LAST_FINALIZED_BLOCK_ID".to_owned()),
-                    )
-                })?,
-                borsh::to_vec(&block_id).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize last block id".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-        Ok(())
+        self.put(&LastFinalizedBlockIdCell(block_id), ())
     }
 
     pub fn put_meta_is_first_block_set(&self) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        self.db
-            .put_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_FIRST_BLOCK_SET_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_FIRST_BLOCK_SET_KEY".to_owned()),
-                    )
-                })?,
-                [1_u8; 1],
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-        Ok(())
+        self.put(&FirstBlockSetCell(true), ())
     }
 
     fn put_meta_latest_block_meta(&self, block_meta: &BlockMeta) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        self.db
-            .put_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_LATEST_BLOCK_META_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_LATEST_BLOCK_META_KEY".to_owned()),
-                    )
-                })?,
-                borsh::to_vec(&block_meta).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize latest block meta".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-        Ok(())
+        self.put(&LatestBlockMetaCellRef(block_meta), ())
     }
 
     fn put_meta_latest_block_meta_batch(
@@ -294,52 +209,11 @@ impl RocksDBIO {
         block_meta: &BlockMeta,
         batch: &mut WriteBatch,
     ) -> DbResult<()> {
-        let cf_meta = self.meta_column();
-        batch.put_cf(
-            &cf_meta,
-            borsh::to_vec(&DB_META_LATEST_BLOCK_META_KEY).map_err(|err| {
-                DbError::borsh_cast_message(
-                    err,
-                    Some("Failed to serialize DB_META_LATEST_BLOCK_META_KEY".to_owned()),
-                )
-            })?,
-            borsh::to_vec(&block_meta).map_err(|err| {
-                DbError::borsh_cast_message(
-                    err,
-                    Some("Failed to serialize latest block meta".to_owned()),
-                )
-            })?,
-        );
-        Ok(())
+        self.put_batch(&LatestBlockMetaCellRef(block_meta), (), batch)
     }
 
     pub fn latest_block_meta(&self) -> DbResult<BlockMeta> {
-        let cf_meta = self.meta_column();
-        let res = self
-            .db
-            .get_cf(
-                &cf_meta,
-                borsh::to_vec(&DB_META_LATEST_BLOCK_META_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize DB_META_LATEST_BLOCK_META_KEY".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-
-        if let Some(data) = res {
-            Ok(borsh::from_slice::<BlockMeta>(&data).map_err(|err| {
-                DbError::borsh_cast_message(
-                    err,
-                    Some("Failed to deserialize latest block meta".to_owned()),
-                )
-            })?)
-        } else {
-            Err(DbError::db_interaction_error(
-                "Latest block meta not found".to_owned(),
-            ))
-        }
+        self.get::<LatestBlockMetaCellOwned>(()).map(|val| val.0)
     }
 
     pub fn put_block(
@@ -380,59 +254,12 @@ impl RocksDBIO {
     }
 
     pub fn get_block(&self, block_id: u64) -> DbResult<Option<Block>> {
-        let cf_block = self.block_column();
-        let res = self
-            .db
-            .get_cf(
-                &cf_block,
-                borsh::to_vec(&block_id).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize block id".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-
-        if let Some(data) = res {
-            Ok(Some(borsh::from_slice::<Block>(&data).map_err(|serr| {
-                DbError::borsh_cast_message(
-                    serr,
-                    Some("Failed to deserialize block data".to_owned()),
-                )
-            })?))
-        } else {
-            Ok(None)
-        }
+        self.get_opt::<BlockCell>(block_id)
+            .map(|opt| opt.map(|val| val.0))
     }
 
     pub fn get_nssa_state(&self) -> DbResult<V03State> {
-        let cf_nssa_state = self.nssa_state_column();
-        let res = self
-            .db
-            .get_cf(
-                &cf_nssa_state,
-                borsh::to_vec(&DB_NSSA_STATE_KEY).map_err(|err| {
-                    DbError::borsh_cast_message(
-                        err,
-                        Some("Failed to serialize block id".to_owned()),
-                    )
-                })?,
-            )
-            .map_err(|rerr| DbError::rocksdb_cast_message(rerr, None))?;
-
-        if let Some(data) = res {
-            Ok(borsh::from_slice::<V03State>(&data).map_err(|serr| {
-                DbError::borsh_cast_message(
-                    serr,
-                    Some("Failed to deserialize block data".to_owned()),
-                )
-            })?)
-        } else {
-            Err(DbError::db_interaction_error(
-                "NSSA state not found".to_owned(),
-            ))
-        }
+        self.get::<NSSAStateCellOwned>(()).map(|val| val.0)
     }
 
     pub fn delete_block(&self, block_id: u64) -> DbResult<()> {
