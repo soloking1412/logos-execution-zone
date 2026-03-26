@@ -2,28 +2,11 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use risc0_zkvm::sha::{Impl, Sha256 as _};
 use serde::{Deserialize, Serialize};
 
-use crate::{Commitment, account::AccountId};
+use crate::{Commitment};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(any(feature = "host", test), derive(Clone, Hash))]
 pub struct NullifierPublicKey(pub [u8; 32]);
-
-impl From<&NullifierPublicKey> for AccountId {
-    fn from(value: &NullifierPublicKey) -> Self {
-        const PRIVATE_ACCOUNT_ID_PREFIX: &[u8; 32] =
-            b"/LEE/v0.3/AccountId/Private/\x00\x00\x00\x00";
-
-        let mut bytes = [0; 64];
-        bytes[0..32].copy_from_slice(PRIVATE_ACCOUNT_ID_PREFIX);
-        bytes[32..].copy_from_slice(&value.0);
-        Self::new(
-            Impl::hash_bytes(&bytes)
-                .as_bytes()
-                .try_into()
-                .expect("Conversion should not fail"),
-        )
-    }
-}
 
 impl AsRef<[u8]> for NullifierPublicKey {
     fn as_ref(&self) -> &[u8] {
@@ -137,20 +120,4 @@ mod tests {
         assert_eq!(npk, expected_npk);
     }
 
-    #[test]
-    fn account_id_from_nullifier_public_key() {
-        let nsk = [
-            57, 5, 64, 115, 153, 56, 184, 51, 207, 238, 99, 165, 147, 214, 213, 151, 30, 251, 30,
-            196, 134, 22, 224, 211, 237, 120, 136, 225, 188, 220, 249, 28,
-        ];
-        let npk = NullifierPublicKey::from(&nsk);
-        let expected_account_id = AccountId::new([
-            139, 72, 194, 222, 215, 187, 147, 56, 55, 35, 222, 205, 156, 12, 204, 227, 166, 44, 30,
-            81, 186, 14, 167, 234, 28, 236, 32, 213, 125, 251, 193, 233,
-        ]);
-
-        let account_id = AccountId::from(&npk);
-
-        assert_eq!(account_id, expected_account_id);
-    }
 }

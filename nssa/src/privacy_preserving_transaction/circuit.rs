@@ -205,7 +205,7 @@ mod tests {
         let recipient = AccountWithMetadata::new(
             Account::default(),
             false,
-            AccountId::from(&recipient_keys.npk()),
+            AccountId::account_id_without_identifier(&recipient_keys.npk()),
         );
 
         let balance_to_move: u128 = 37;
@@ -275,14 +275,14 @@ mod tests {
                 data: Data::default(),
             },
             true,
-            AccountId::from(&sender_keys.npk()),
+            AccountId::account_id_without_identifier(&sender_keys.npk()),
         );
         let commitment_sender = Commitment::new(&sender_keys.npk(), &sender_pre.account);
 
         let recipient = AccountWithMetadata::new(
             Account::default(),
             false,
-            AccountId::from(&recipient_keys.npk()),
+            AccountId::account_id_without_identifier(&recipient_keys.npk()),
         );
         let balance_to_move: u128 = 37;
 
