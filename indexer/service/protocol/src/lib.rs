@@ -308,9 +308,9 @@ impl Display for ValidityWindow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             (Some(start), Some(end)) => write!(f, "[{start}, {end})"),
-            (Some(start), None) => write!(f, "[{start}, ∞)"),
-            (None, Some(end)) => write!(f, "(-∞, {end})"),
-            (None, None) => write!(f, "(-∞, ∞)"),
+            (Some(start), None) => write!(f, "[{start}, \u{221e})"),
+            (None, Some(end)) => write!(f, "(-\u{221e}, {end})"),
+            (None, None) => write!(f, "(-\u{221e}, \u{221e})"),
         }
     }
 }

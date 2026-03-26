@@ -341,7 +341,7 @@ pub mod tests {
         Commitment, Nullifier, NullifierPublicKey, NullifierSecretKey, SharedSecretKey,
         account::{Account, AccountId, AccountWithMetadata, Nonce, data::Data},
         encryption::{EphemeralPublicKey, Scalar, ViewingPublicKey},
-        program::{BlockId, PdaSeed, ProgramId},
+        program::{BlockId, PdaSeed, ProgramId, ValidityWindow},
     };
 
     use crate::{
@@ -3018,6 +3018,7 @@ pub mod tests {
         validity_window: (Option<BlockId>, Option<BlockId>),
         block_id: BlockId,
     ) {
+        let validity_window: ValidityWindow = validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_public_account_keys_1();
         let pre = AccountWithMetadata::new(Account::default(), false, account_keys.account_id());
@@ -3037,7 +3038,7 @@ pub mod tests {
             PublicTransaction::new(message, witness_set)
         };
         let result = state.transition_from_public_transaction(&tx, block_id);
-        let is_inside_validity_window = match validity_window {
+        let is_inside_validity_window = match (validity_window.start(), validity_window.end()) {
             (Some(s), Some(e)) => s <= block_id && block_id < e,
             (Some(s), None) => s <= block_id,
             (None, Some(e)) => block_id < e,
@@ -3067,6 +3068,7 @@ pub mod tests {
         validity_window: (Option<BlockId>, Option<BlockId>),
         block_id: BlockId,
     ) {
+        let validity_window: ValidityWindow = validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_private_account_keys_1();
         let pre = AccountWithMetadata::new(Account::default(), false, &account_keys.npk());
@@ -3099,7 +3101,7 @@ pub mod tests {
             PrivacyPreservingTransaction::new(message, witness_set)
         };
         let result = state.transition_from_privacy_preserving_transaction(&tx, block_id);
-        let is_inside_validity_window = match validity_window {
+        let is_inside_validity_window = match (validity_window.start(), validity_window.end()) {
             (Some(s), Some(e)) => s <= block_id && block_id < e,
             (Some(s), None) => s <= block_id,
             (None, Some(e)) => block_id < e,
