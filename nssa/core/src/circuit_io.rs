@@ -48,7 +48,7 @@ impl PrivacyPreservingCircuitOutput {
     }
 }
 
-/*
+
 #[cfg(feature = "host")]
 #[cfg(test)]
 mod tests {
@@ -93,12 +93,12 @@ mod tests {
             }],
             ciphertexts: vec![Ciphertext(vec![255, 255, 1, 1, 2, 2])],
             new_commitments: vec![Commitment::new(
-                &NullifierPublicKey::from(&[1; 32]),
+                &AccountId::account_id_without_identifier(&NullifierPublicKey::from(&[1_u8;32])),
                 &Account::default(),
             )],
             new_nullifiers: vec![(
                 Nullifier::for_account_update(
-                    &Commitment::new(&NullifierPublicKey::from(&[2; 32]), &Account::default()),
+                    &Commitment::new(&AccountId::account_id_without_identifier(&NullifierPublicKey::from(&[2_u8;32])), &Account::default()),
                     &[1; 32],
                 ),
                 [0xab; 32],

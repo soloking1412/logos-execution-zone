@@ -286,8 +286,8 @@ impl WalletCore {
 
     #[must_use]
     pub fn get_private_account_commitment(&self, account_id: AccountId) -> Option<Commitment> {
-        let (keys, account) = self.storage.user_data.get_private_account(account_id)?;
-        Some(Commitment::new(&keys.nullifier_public_key, account))
+        let (_, account) = self.storage.user_data.get_private_account(account_id)?;
+        Some(Commitment::new(&account_id, account))
     }
 
     /// Poll transactions.
