@@ -344,7 +344,7 @@ pub mod tests {
         Commitment, Nullifier, NullifierPublicKey, NullifierSecretKey, SharedSecretKey,
         account::{Account, AccountId, AccountWithMetadata, Nonce, data::Data},
         encryption::{EphemeralPublicKey, Scalar, ViewingPublicKey},
-        program::{BlockId, PdaSeed, ProgramId, Timestamp, ValidityWindow},
+        program::{BlockId, BlockValidityWindow, PdaSeed, ProgramId, Timestamp, TimestampValidityWindow},
     };
 
     use crate::{
@@ -3021,7 +3021,7 @@ pub mod tests {
         validity_window: (Option<BlockId>, Option<BlockId>),
         block_id: BlockId,
     ) {
-        let block_validity_window: ValidityWindow<BlockId> = validity_window.try_into().unwrap();
+        let block_validity_window: BlockValidityWindow = validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_public_account_keys_1();
         let pre = AccountWithMetadata::new(Account::default(), false, account_keys.account_id());
@@ -3030,7 +3030,7 @@ pub mod tests {
             let account_ids = vec![pre.account_id];
             let nonces = vec![];
             let program_id = validity_window_program.id();
-            let instruction = (block_validity_window, ValidityWindow::<Timestamp>::new_unbounded());
+            let instruction = (block_validity_window, TimestampValidityWindow::new_unbounded());
             let message =
                 public_transaction::Message::try_new(program_id, account_ids, nonces, instruction)
                     .unwrap();
@@ -3068,7 +3068,7 @@ pub mod tests {
         validity_window: (Option<Timestamp>, Option<Timestamp>),
         timestamp_ms: Timestamp,
     ) {
-        let timestamp_validity_window: ValidityWindow<Timestamp> =
+        let timestamp_validity_window: TimestampValidityWindow =
             validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_public_account_keys_1();
@@ -3079,7 +3079,7 @@ pub mod tests {
             let nonces = vec![];
             let program_id = validity_window_program.id();
             let instruction =
-                (ValidityWindow::<BlockId>::new_unbounded(), timestamp_validity_window);
+                (BlockValidityWindow::new_unbounded(), timestamp_validity_window);
             let message =
                 public_transaction::Message::try_new(program_id, account_ids, nonces, instruction)
                     .unwrap();
@@ -3118,7 +3118,7 @@ pub mod tests {
         validity_window: (Option<BlockId>, Option<BlockId>),
         block_id: BlockId,
     ) {
-        let block_validity_window: ValidityWindow<BlockId> = validity_window.try_into().unwrap();
+        let block_validity_window: BlockValidityWindow = validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_private_account_keys_1();
         let pre = AccountWithMetadata::new(Account::default(), false, &account_keys.npk());
@@ -3128,7 +3128,7 @@ pub mod tests {
             let shared_secret = SharedSecretKey::new(&esk, &account_keys.vpk());
             let epk = EphemeralPublicKey::from_scalar(esk);
 
-            let instruction = (block_validity_window, ValidityWindow::<Timestamp>::new_unbounded());
+            let instruction = (block_validity_window, TimestampValidityWindow::new_unbounded());
             let (output, proof) = circuit::execute_and_prove(
                 vec![pre],
                 Program::serialize_instruction(instruction).unwrap(),
@@ -3183,7 +3183,7 @@ pub mod tests {
         validity_window: (Option<Timestamp>, Option<Timestamp>),
         timestamp_ms: Timestamp,
     ) {
-        let timestamp_validity_window: ValidityWindow<Timestamp> =
+        let timestamp_validity_window: TimestampValidityWindow =
             validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_private_account_keys_1();
@@ -3195,7 +3195,7 @@ pub mod tests {
             let epk = EphemeralPublicKey::from_scalar(esk);
 
             let instruction =
-                (ValidityWindow::<BlockId>::new_unbounded(), timestamp_validity_window);
+                (BlockValidityWindow::new_unbounded(), timestamp_validity_window);
             let (output, proof) = circuit::execute_and_prove(
                 vec![pre],
                 Program::serialize_instruction(instruction).unwrap(),
