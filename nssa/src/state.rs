@@ -3032,7 +3032,10 @@ pub mod tests {
             let account_ids = vec![pre.account_id];
             let nonces = vec![];
             let program_id = validity_window_program.id();
-            let instruction = (block_validity_window, TimestampValidityWindow::new_unbounded());
+            let instruction = (
+                block_validity_window,
+                TimestampValidityWindow::new_unbounded(),
+            );
             let message =
                 public_transaction::Message::try_new(program_id, account_ids, nonces, instruction)
                     .unwrap();
@@ -3040,12 +3043,13 @@ pub mod tests {
             PublicTransaction::new(message, witness_set)
         };
         let result = state.transition_from_public_transaction(&tx, block_id, 0);
-        let is_inside_validity_window = match (block_validity_window.start(), block_validity_window.end()) {
-            (Some(s), Some(e)) => s <= block_id && block_id < e,
-            (Some(s), None) => s <= block_id,
-            (None, Some(e)) => block_id < e,
-            (None, None) => true,
-        };
+        let is_inside_validity_window =
+            match (block_validity_window.start(), block_validity_window.end()) {
+                (Some(s), Some(e)) => s <= block_id && block_id < e,
+                (Some(s), None) => s <= block_id,
+                (None, Some(e)) => block_id < e,
+                (None, None) => true,
+            };
         if is_inside_validity_window {
             assert!(result.is_ok());
         } else {
@@ -3080,8 +3084,10 @@ pub mod tests {
             let account_ids = vec![pre.account_id];
             let nonces = vec![];
             let program_id = validity_window_program.id();
-            let instruction =
-                (BlockValidityWindow::new_unbounded(), timestamp_validity_window);
+            let instruction = (
+                BlockValidityWindow::new_unbounded(),
+                timestamp_validity_window,
+            );
             let message =
                 public_transaction::Message::try_new(program_id, account_ids, nonces, instruction)
                     .unwrap();
@@ -3089,13 +3095,15 @@ pub mod tests {
             PublicTransaction::new(message, witness_set)
         };
         let result = state.transition_from_public_transaction(&tx, 1, timestamp);
-        let is_inside_validity_window =
-            match (timestamp_validity_window.start(), timestamp_validity_window.end()) {
-                (Some(s), Some(e)) => s <= timestamp && timestamp < e,
-                (Some(s), None) => s <= timestamp,
-                (None, Some(e)) => timestamp < e,
-                (None, None) => true,
-            };
+        let is_inside_validity_window = match (
+            timestamp_validity_window.start(),
+            timestamp_validity_window.end(),
+        ) {
+            (Some(s), Some(e)) => s <= timestamp && timestamp < e,
+            (Some(s), None) => s <= timestamp,
+            (None, Some(e)) => timestamp < e,
+            (None, None) => true,
+        };
         if is_inside_validity_window {
             assert!(result.is_ok());
         } else {
@@ -3130,7 +3138,10 @@ pub mod tests {
             let shared_secret = SharedSecretKey::new(&esk, &account_keys.vpk());
             let epk = EphemeralPublicKey::from_scalar(esk);
 
-            let instruction = (block_validity_window, TimestampValidityWindow::new_unbounded());
+            let instruction = (
+                block_validity_window,
+                TimestampValidityWindow::new_unbounded(),
+            );
             let (output, proof) = circuit::execute_and_prove(
                 vec![pre],
                 Program::serialize_instruction(instruction).unwrap(),
@@ -3196,8 +3207,10 @@ pub mod tests {
             let shared_secret = SharedSecretKey::new(&esk, &account_keys.vpk());
             let epk = EphemeralPublicKey::from_scalar(esk);
 
-            let instruction =
-                (BlockValidityWindow::new_unbounded(), timestamp_validity_window);
+            let instruction = (
+                BlockValidityWindow::new_unbounded(),
+                timestamp_validity_window,
+            );
             let (output, proof) = circuit::execute_and_prove(
                 vec![pre],
                 Program::serialize_instruction(instruction).unwrap(),
@@ -3221,13 +3234,15 @@ pub mod tests {
             PrivacyPreservingTransaction::new(message, witness_set)
         };
         let result = state.transition_from_privacy_preserving_transaction(&tx, 1, timestamp);
-        let is_inside_validity_window =
-            match (timestamp_validity_window.start(), timestamp_validity_window.end()) {
-                (Some(s), Some(e)) => s <= timestamp && timestamp < e,
-                (Some(s), None) => s <= timestamp,
-                (None, Some(e)) => timestamp < e,
-                (None, None) => true,
-            };
+        let is_inside_validity_window = match (
+            timestamp_validity_window.start(),
+            timestamp_validity_window.end(),
+        ) {
+            (Some(s), Some(e)) => s <= timestamp && timestamp < e,
+            (Some(s), None) => s <= timestamp,
+            (None, Some(e)) => timestamp < e,
+            (None, None) => true,
+        };
         if is_inside_validity_window {
             assert!(result.is_ok());
         } else {
