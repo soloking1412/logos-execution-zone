@@ -4,6 +4,8 @@
 )]
 
 pub use circuit_io::{PrivacyPreservingCircuitInput, PrivacyPreservingCircuitOutput};
+// LP-0015 ergonomic macros are re-exported at crate root automatically via
+// `#[macro_export]` in program.rs (`assert_internal!` and `call_program!`).
 pub use commitment::{
     Commitment, CommitmentSetDigest, DUMMY_COMMITMENT, DUMMY_COMMITMENT_HASH, MembershipProof,
     compute_digest_for_path,

@@ -16,6 +16,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: (validity_window, chained_program_id, chained_validity_window),
+            ..
         },
         instruction_words,
     ) = read_nssa_inputs::<Instruction>();
@@ -29,6 +30,7 @@ fn main() {
         instruction_data: chained_instruction,
         pre_states,
         pda_seeds: vec![],
+        capabilities: vec![],
     };
 
     ProgramOutput::new(

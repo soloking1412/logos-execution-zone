@@ -9,6 +9,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: validity_window,
+            ..
         },
         instruction_words,
     ) = read_nssa_inputs::<Instruction>();

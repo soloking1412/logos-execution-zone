@@ -16,6 +16,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: (balance, transfer_program_id),
+            ..
         },
         instruction_words,
     ) = read_nssa_inputs::<Instruction>();
@@ -37,6 +38,7 @@ fn main() {
         instruction_data,
         pre_states: vec![authorised_sender, receiver.clone()],
         pda_seeds: vec![],
+        capabilities: vec![],
     };
 
     ProgramOutput::new(

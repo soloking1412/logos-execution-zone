@@ -23,6 +23,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: greeting,
+            ..
         },
         instruction_data,
     ) = read_nssa_inputs::<Instruction>();

@@ -70,6 +70,56 @@ Both public and private executions use the same Risc0 VM bytecode. Public transa
 This design keeps public transactions as fast as any RISC-V–based VM and makes private transactions efficient for validators. It also supports parallel execution similar to Solana, improving throughput. The main computational cost for privacy-preserving transactions is on the user side, where ZK proofs are generated.
 
 ---
+
+## LP-0015 — General cross-program calls via tail calls
+
+λPrize submission. Full spec: [`docs/general-calls-via-tail-c-calls.md`](docs/general-calls-via-tail-c-calls.md)
+
+Programs can declare **External** entrypoints (callable by anyone) and **Internal** continuations (only reachable via a chained tail-call). The runtime issues unforgeable capability tickets that internal handlers verify; direct user invocations always arrive with an empty ticket list and are rejected.
+
+### API
+
+```rust
+use nssa_core::{call_program, assert_internal};
+
+// External: mint own capability and tail-call B with the continuation address
+let call_to_b = call_program!(
+    program_b_id, pre_states.clone(), &(program_a_internal_id, my_id);
+    caps => vec![my_id]
+);
+
+// B: forward received capabilities to the continuation
+let call_to_a_internal = ChainedCall::new(program_a_internal_id, pre_states, &required_caller)
+    .with_capabilities(capabilities.clone());
+
+// Internal: guard — panics if capability absent, failing the zkVM proof
+assert_internal!(capabilities, required_caller);
+```
+
+### Execution chain
+
+```
+User tx
+  └─▶ program_a_entry   [mints cap]
+        └─▶ program_b   [forwards cap]
+              └─▶ program_a_internal   [assert_internal! ✓]
+```
+
+Direct call: `User tx → program_a_internal` arrives with `capabilities = []`, `assert_internal!` panics, proof fails, sequencer rejects.
+
+### Tests
+
+```bash
+RISC0_DEV_MODE=1 cargo test -p nssa -- general_call_capability_positive_path
+RISC0_DEV_MODE=1 cargo test -p nssa -- direct_call_to_internal_entrypoint_is_rejected
+RISC0_DEV_MODE=1 cargo test -p nssa -- sequencer_rejects_forged_capability
+RISC0_DEV_MODE=1 cargo test --release
+RISC0_SKIP_BUILD=1 cargo clippy --workspace -- -D warnings
+```
+
+Example programs: `test_program_methods/guest/src/bin/program_a_entry.rs`, `program_b.rs`, `program_a_internal.rs`
+
+---
 ---
 ---
 

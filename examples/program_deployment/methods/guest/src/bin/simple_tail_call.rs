@@ -29,6 +29,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: (),
+            ..
         },
         instruction_data,
     ) = read_nssa_inputs::<()>();
@@ -50,6 +51,7 @@ fn main() {
         instruction_data: chained_call_instruction_data,
         pre_states,
         pda_seeds: vec![],
+        capabilities: vec![],
     };
 
     // Write the outputs.

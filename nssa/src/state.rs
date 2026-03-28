@@ -377,6 +377,10 @@ pub mod tests {
             self.insert_program(Program::claimer());
             self.insert_program(Program::changer_claimer());
             self.insert_program(Program::validity_window());
+            // General cross-program call capability demo programs (LP-0015)
+            self.insert_program(Program::program_a_entry());
+            self.insert_program(Program::program_a_internal());
+            self.insert_program(Program::program_b());
             self
         }
 
@@ -3123,5 +3127,54 @@ pub mod tests {
         let bytes = borsh::to_vec(&state).unwrap();
         let state_from_bytes: V03State = borsh::from_slice(&bytes).unwrap();
         assert_eq!(state, state_from_bytes);
+    }
+
+    #[test]
+    fn general_call_capability_positive_path() {
+        let a_entry = Program::program_a_entry();
+        let a_internal = Program::program_a_internal();
+        let b = Program::program_b();
+
+        let account_id = AccountId::new([42; 32]);
+        let initial_data = [(account_id, 1_000_u128)];
+        let mut state =
+            V03State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+
+        let instruction = (b.id(), a_internal.id(), a_entry.id());
+        let message = public_transaction::Message::try_new(
+            a_entry.id(),
+            vec![account_id],
+            vec![],
+            instruction,
+        )
+        .unwrap();
+        let witness_set = public_transaction::WitnessSet::for_message(&message, &[]);
+        let tx = PublicTransaction::new(message, witness_set);
+
+        state.transition_from_public_transaction(&tx, 1).expect("A->B->A_internal should succeed");
+    }
+
+    #[test]
+    fn direct_call_to_internal_entrypoint_is_rejected() {
+        let a_entry = Program::program_a_entry();
+        let a_internal = Program::program_a_internal();
+
+        let account_id = AccountId::new([42; 32]);
+        let initial_data = [(account_id, 1_000_u128)];
+        let mut state =
+            V03State::new_with_genesis_accounts(&initial_data, &[]).with_test_programs();
+
+        let message = public_transaction::Message::try_new(
+            a_internal.id(),
+            vec![account_id],
+            vec![],
+            a_entry.id(), // required_caller
+        )
+        .unwrap();
+        let witness_set = public_transaction::WitnessSet::for_message(&message, &[]);
+        let tx = PublicTransaction::new(message, witness_set);
+
+        let result = state.transition_from_public_transaction(&tx, 1);
+        assert!(result.is_err(), "direct call to internal entrypoint must fail");
     }
 }

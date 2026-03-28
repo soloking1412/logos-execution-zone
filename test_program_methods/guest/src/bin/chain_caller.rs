@@ -15,6 +15,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: (balance, auth_transfer_id, num_chain_calls, pda_seed),
+            ..
         },
         instruction_words,
     ) = read_nssa_inputs::<Instruction>();
@@ -37,8 +38,9 @@ fn main() {
         let new_chained_call = ChainedCall {
             program_id: auth_transfer_id,
             instruction_data: instruction_data.clone(),
-            pre_states: vec![running_sender_pre.clone(), running_recipient_pre.clone()], /* <- Account order permutation here */
+            pre_states: vec![running_sender_pre.clone(), running_recipient_pre.clone()],
             pda_seeds: pda_seed.iter().cloned().collect(),
+            capabilities: vec![],
         };
         chained_calls.push(new_chained_call);
 

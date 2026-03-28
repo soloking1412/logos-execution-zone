@@ -85,6 +85,8 @@ pub fn execute_and_prove(
         instruction_data,
         pre_states,
         pda_seeds: vec![],
+        // Users can never forge capabilities; the initial call always starts with none.
+        capabilities: vec![],
     };
 
     let mut chained_calls = VecDeque::from_iter([(initial_call, initial_program)]);
@@ -98,6 +100,7 @@ pub fn execute_and_prove(
             program,
             &chained_call.pre_states,
             &chained_call.instruction_data,
+            &chained_call.capabilities,
         )?;
 
         let program_output: ProgramOutput = inner_receipt
@@ -111,7 +114,18 @@ pub fn execute_and_prove(
         // Prove circuit.
         env_builder.add_assumption(inner_receipt);
 
+        let executing_program_id = chained_call.program_id;
+
         for new_call in program_output.chained_calls.into_iter().rev() {
+            // Enforce capability non-forgeability identically to the public tx path.
+            for cap in &new_call.capabilities {
+                let program_can_mint_own = *cap == executing_program_id;
+                let program_is_forwarding_received = chained_call.capabilities.contains(cap);
+                if !program_can_mint_own && !program_is_forwarding_received {
+                    return Err(NssaError::InvalidProgramBehavior);
+                }
+            }
+
             let next_program = dependencies
                 .get(&new_call.program_id)
                 .ok_or(NssaError::InvalidProgramBehavior)?;
@@ -155,10 +169,11 @@ fn execute_and_prove_program(
     program: &Program,
     pre_states: &[AccountWithMetadata],
     instruction_data: &InstructionData,
+    capabilities: &[ProgramId],
 ) -> Result<Receipt, NssaError> {
     // Write inputs to the program
     let mut env_builder = ExecutorEnv::builder();
-    Program::write_inputs(pre_states, instruction_data, &mut env_builder)?;
+    Program::write_inputs(pre_states, instruction_data, capabilities, &mut env_builder)?;
     let env = env_builder.build().unwrap();
 
     // Prove the program

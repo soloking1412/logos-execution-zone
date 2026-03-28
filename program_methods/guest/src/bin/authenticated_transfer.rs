@@ -69,6 +69,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: balance_to_move,
+            ..
         },
         instruction_words,
     ) = read_nssa_inputs();

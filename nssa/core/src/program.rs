@@ -7,6 +7,36 @@ use serde::{Deserialize, Serialize};
 
 use crate::account::{Account, AccountId, AccountWithMetadata};
 
+/// Panics (failing the zkVM proof) if `$required_caller` is absent from
+/// `$capabilities`. Use at the top of every internal continuation handler.
+///
+/// ```rust,ignore
+/// assert_internal!(capabilities, caller_program_id);
+/// ```
+#[macro_export]
+macro_rules! assert_internal {
+    ($capabilities:expr, $required_caller:expr) => {
+        $crate::program::assert_capability(&$capabilities, $required_caller)
+    };
+}
+
+/// Builds a [`ChainedCall`], optionally attaching capability tickets.
+///
+/// ```rust,ignore
+/// let call = call_program!(target, pre_states, &instruction);
+/// let call = call_program!(target, pre_states, &instruction; caps => vec![my_id]);
+/// ```
+#[macro_export]
+macro_rules! call_program {
+    ($program_id:expr, $pre_states:expr, $instruction:expr) => {
+        $crate::program::ChainedCall::new($program_id, $pre_states, $instruction)
+    };
+    ($program_id:expr, $pre_states:expr, $instruction:expr; caps => $caps:expr) => {
+        $crate::program::ChainedCall::new($program_id, $pre_states, $instruction)
+            .with_capabilities($caps)
+    };
+}
+
 pub const DEFAULT_PROGRAM_ID: ProgramId = [0; 8];
 pub const MAX_NUMBER_CHAINED_CALLS: usize = 10;
 
@@ -15,13 +45,12 @@ pub type InstructionData = Vec<u32>;
 pub struct ProgramInput<T> {
     pub pre_states: Vec<AccountWithMetadata>,
     pub instruction: T,
+    /// Capability tickets forwarded from the caller; empty on direct user invocations.
+    /// Internal entrypoints must call [`assert_capability`] to verify the caller.
+    pub capabilities: Vec<ProgramId>,
 }
 
-/// A 32-byte seed used to compute a *Program-Derived `AccountId`* (PDA).
-///
-/// Each program can derive up to `2^256` unique account IDs by choosing different
-/// seeds. PDAs allow programs to control namespaced account identifiers without
-/// collisions between programs.
+/// A 32-byte seed used to derive a program-owned [`AccountId`] (PDA).
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct PdaSeed([u8; 32]);
 
@@ -61,6 +90,12 @@ pub struct ChainedCall {
     /// The instruction data to pass.
     pub instruction_data: InstructionData,
     pub pda_seeds: Vec<PdaSeed>,
+    /// Capability tickets to forward to the callee's `ProgramInput`.
+    /// A program is permitted to include its own `ProgramId` or any capability
+    /// it itself received.  The sequencer rejects any attempt to include a
+    /// capability whose `ProgramId` was not already present in the caller's
+    /// own capability list or equal to the caller's own `ProgramId`.
+    pub capabilities: Vec<ProgramId>,
 }
 
 impl ChainedCall {
@@ -76,12 +111,25 @@ impl ChainedCall {
             instruction_data: risc0_zkvm::serde::to_vec(instruction)
                 .expect("Serialization to Vec<u32> should not fail"),
             pda_seeds: Vec::new(),
+            capabilities: Vec::new(),
         }
     }
 
     #[must_use]
     pub fn with_pda_seeds(mut self, pda_seeds: Vec<PdaSeed>) -> Self {
         self.pda_seeds = pda_seeds;
+        self
+    }
+
+    /// Attach capability tickets that will be forwarded to the callee.
+    ///
+    /// Each `ProgramId` in `capabilities` must either equal the caller's own
+    /// `ProgramId` or have been present in the caller's own received capability
+    /// list.  The sequencer enforces this invariant; a program that violates it
+    /// will cause the whole transaction to be rejected.
+    #[must_use]
+    pub fn with_capabilities(mut self, capabilities: Vec<ProgramId>) -> Self {
+        self.capabilities = capabilities;
         self
     }
 }
@@ -339,6 +387,13 @@ impl WrappedBalanceSum {
     }
 }
 
+/// Entrypoint visibility. Internal handlers must guard with [`assert_capability`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Visibility {
+    External,
+    Internal,
+}
+
 #[must_use]
 pub fn compute_authorized_pdas(
     caller_program_id: Option<ProgramId>,
@@ -354,19 +409,30 @@ pub fn compute_authorized_pdas(
         .unwrap_or_default()
 }
 
-/// Reads the NSSA inputs from the guest environment.
+/// Reads pre-states, instruction, and capability tickets from the zkVM environment.
 #[must_use]
 pub fn read_nssa_inputs<T: DeserializeOwned>() -> (ProgramInput<T>, InstructionData) {
     let pre_states: Vec<AccountWithMetadata> = env::read();
     let instruction_words: InstructionData = env::read();
+    let capabilities: Vec<ProgramId> = env::read();
     let instruction = T::deserialize(&mut Deserializer::new(instruction_words.as_ref())).unwrap();
     (
         ProgramInput {
             pre_states,
             instruction,
+            capabilities,
         },
         instruction_words,
     )
+}
+
+/// Panics (failing the zkVM proof) if `required_caller` is absent from `capabilities`.
+/// Call at the top of every internal entrypoint. Prefer the [`assert_internal!`] macro.
+pub fn assert_capability(capabilities: &[ProgramId], required_caller: ProgramId) {
+    assert!(
+        capabilities.contains(&required_caller),
+        "Internal entrypoint called without required capability ticket; direct invocation is not allowed"
+    );
 }
 
 /// Validates well-behaved program execution.

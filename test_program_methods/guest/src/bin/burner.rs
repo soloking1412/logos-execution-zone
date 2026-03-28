@@ -7,6 +7,7 @@ fn main() {
         ProgramInput {
             pre_states,
             instruction: balance_to_burn,
+            ..
         },
         instruction_words,
     ) = read_nssa_inputs::<Instruction>();

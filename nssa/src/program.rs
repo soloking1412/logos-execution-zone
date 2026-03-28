@@ -54,11 +54,12 @@ impl Program {
         &self,
         pre_states: &[AccountWithMetadata],
         instruction_data: &InstructionData,
+        capabilities: &[nssa_core::program::ProgramId],
     ) -> Result<ProgramOutput, NssaError> {
         // Write inputs to the program
         let mut env_builder = ExecutorEnv::builder();
         env_builder.session_limit(Some(MAX_NUM_CYCLES_PUBLIC_EXECUTION));
-        Self::write_inputs(pre_states, instruction_data, &mut env_builder)?;
+        Self::write_inputs(pre_states, instruction_data, capabilities, &mut env_builder)?;
         let env = env_builder.build().unwrap();
 
         // Execute the program (without proving)
@@ -80,11 +81,16 @@ impl Program {
     pub(crate) fn write_inputs(
         pre_states: &[AccountWithMetadata],
         instruction_data: &[u32],
+        capabilities: &[nssa_core::program::ProgramId],
         env_builder: &mut ExecutorEnvBuilder,
     ) -> Result<(), NssaError> {
         let pre_states = pre_states.to_vec();
+        let capabilities = capabilities.to_vec();
         env_builder
             .write(&(pre_states, instruction_data))
+            .map_err(|e| NssaError::ProgramWriteInputFailed(e.to_string()))?;
+        env_builder
+            .write(&capabilities)
             .map_err(|e| NssaError::ProgramWriteInputFailed(e.to_string()))?;
         Ok(())
     }
@@ -306,6 +312,41 @@ mod tests {
             use test_program_methods::VALIDITY_WINDOW_CHAIN_CALLER_ELF;
             Self::new(VALIDITY_WINDOW_CHAIN_CALLER_ELF.to_vec()).unwrap()
         }
+
+        /// Program A – External (public) entrypoint for the general-call demo.
+        #[must_use]
+        pub fn program_a_entry() -> Self {
+            use test_program_methods::{PROGRAM_A_ENTRY_ELF, PROGRAM_A_ENTRY_ID};
+            Self {
+                id: PROGRAM_A_ENTRY_ID,
+                elf: PROGRAM_A_ENTRY_ELF.to_vec(),
+            }
+        }
+
+        /// Program A – Internal continuation for the general-call demo.
+        ///
+        /// This entrypoint MUST only be reachable via a legitimate chained tail
+        /// call that carries the Program A entry capability ticket.
+        #[must_use]
+        pub fn program_a_internal() -> Self {
+            use test_program_methods::{PROGRAM_A_INTERNAL_ELF, PROGRAM_A_INTERNAL_ID};
+            Self {
+                id: PROGRAM_A_INTERNAL_ID,
+                elf: PROGRAM_A_INTERNAL_ELF.to_vec(),
+            }
+        }
+
+        /// Program B – External entrypoint for the general-call demo.
+        ///
+        /// Receives a continuation from Program A and tail-calls back.
+        #[must_use]
+        pub fn program_b() -> Self {
+            use test_program_methods::{PROGRAM_B_ELF, PROGRAM_B_ID};
+            Self {
+                id: PROGRAM_B_ID,
+                elf: PROGRAM_B_ELF.to_vec(),
+            }
+        }
     }
 
     #[test]
@@ -333,7 +374,7 @@ mod tests {
             ..Account::default()
         };
         let program_output = program
-            .execute(&[sender, recipient], &instruction_data)
+            .execute(&[sender, recipient], &instruction_data, &[])
             .unwrap();
 
         let [sender_post, recipient_post] = program_output.post_states.try_into().unwrap();

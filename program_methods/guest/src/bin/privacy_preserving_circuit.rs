@@ -54,6 +54,8 @@ impl ExecutionState {
             instruction_data: first_output.instruction_data.clone(),
             pre_states: first_output.pre_states.clone(),
             pda_seeds: Vec::new(),
+            // Users can never forge capabilities; the initial call always starts with none.
+            capabilities: vec![],
         };
         let mut chained_calls = VecDeque::from_iter([(initial_call, None)]);
 
@@ -93,8 +95,21 @@ impl ExecutionState {
             );
             assert!(execution_valid, "Bad behaved program");
 
+            let executing_program_id = chained_call.program_id;
+
             for next_call in program_output.chained_calls.iter().rev() {
-                chained_calls.push_front((next_call.clone(), Some(chained_call.program_id)));
+                // -------------------------------------------------------
+                // Capability Security Enforcement
+                // -------------------------------------------------------
+                for cap in &next_call.capabilities {
+                    let program_can_mint_own = *cap == executing_program_id;
+                    let program_is_forwarding_received = chained_call.capabilities.contains(cap);
+                    assert!(
+                        program_can_mint_own || program_is_forwarding_received,
+                        "InvalidProgramBehavior: Capability forgery detected in circuit"
+                    );
+                }
+                chained_calls.push_front((next_call.clone(), Some(executing_program_id)));
             }
 
             let authorized_pdas = nssa_core::program::compute_authorized_pdas(

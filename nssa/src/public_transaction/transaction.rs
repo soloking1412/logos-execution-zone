@@ -125,6 +125,8 @@ impl PublicTransaction {
             instruction_data: message.instruction_data.clone(),
             pre_states: input_pre_states,
             pda_seeds: vec![],
+            // Users can never forge capabilities; the initial call always starts with none.
+            capabilities: vec![],
         };
 
         let mut chained_calls = VecDeque::from_iter([(initial_call, None)]);
@@ -142,11 +144,12 @@ impl PublicTransaction {
             };
 
             debug!(
-                "Program {:?} pre_states: {:?}, instruction_data: {:?}",
-                chained_call.program_id, chained_call.pre_states, chained_call.instruction_data
+                "Program {:?} pre_states: {:?}, instruction_data: {:?}, capabilities: {:?}",
+                chained_call.program_id, chained_call.pre_states, chained_call.instruction_data,
+                chained_call.capabilities
             );
             let mut program_output =
-                program.execute(&chained_call.pre_states, &chained_call.instruction_data)?;
+                program.execute(&chained_call.pre_states, &chained_call.instruction_data, &chained_call.capabilities)?;
             debug!(
                 "Program {:?} output: {:?}",
                 chained_call.program_id, program_output
@@ -221,8 +224,19 @@ impl PublicTransaction {
                 state_diff.insert(pre.account_id, post.account().clone());
             }
 
+            let executing_program_id = chained_call.program_id;
+
             for new_call in program_output.chained_calls.into_iter().rev() {
-                chained_calls.push_front((new_call, Some(chained_call.program_id)));
+                // A program may only forward caps it minted (own ID) or received.
+                for cap in &new_call.capabilities {
+                    let program_can_mint_own = *cap == executing_program_id;
+                    let program_is_forwarding_received = chained_call.capabilities.contains(cap);
+                    ensure!(
+                        program_can_mint_own || program_is_forwarding_received,
+                        NssaError::InvalidProgramBehavior
+                    );
+                }
+                chained_calls.push_front((new_call, Some(executing_program_id)));
             }
 
             chain_calls_counter = chain_calls_counter
@@ -447,5 +461,25 @@ pub mod tests {
         let tx = PublicTransaction::new(message, witness_set);
         let result = tx.validate_and_produce_public_state_diff(&state, 1);
         assert!(matches!(result, Err(NssaError::InvalidInput(_))));
+    }
+
+    #[test]
+    fn sequencer_rejects_forged_capability_in_chained_call() {
+        use nssa_core::program::ProgramId;
+
+        let forged_cap: ProgramId = [0xbad_cafe_u32; 8];
+        let executing_program_id: ProgramId = Program::authenticated_transfer_program().id();
+        let caller_received_caps: Vec<ProgramId> = vec![];
+        let new_call_caps: Vec<ProgramId> = vec![forged_cap];
+
+        let mut forgery_detected = false;
+        for cap in &new_call_caps {
+            if *cap != executing_program_id && !caller_received_caps.contains(cap) {
+                forgery_detected = true;
+                break;
+            }
+        }
+
+        assert!(forgery_detected, "sequencer must reject forged capabilities");
     }
 }
