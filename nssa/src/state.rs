@@ -146,6 +146,7 @@ impl V03State {
         this.insert_program(Program::authenticated_transfer_program());
         this.insert_program(Program::token());
         this.insert_program(Program::amm());
+        this.insert_program(Program::ata());
 
         this
     }
@@ -343,7 +344,7 @@ pub mod tests {
         Commitment, Nullifier, NullifierPublicKey, NullifierSecretKey, SharedSecretKey,
         account::{Account, AccountId, AccountWithMetadata, Nonce, data::Data},
         encryption::{EphemeralPublicKey, Scalar, ViewingPublicKey},
-        program::{BlockId, PdaSeed, ProgramId, Timestamp},
+        program::{BlockId, PdaSeed, ProgramId, ValidityWindow},
     };
 
     use crate::{
@@ -507,6 +508,7 @@ pub mod tests {
             );
             this.insert(Program::token().id(), Program::token());
             this.insert(Program::amm().id(), Program::amm());
+            this.insert(Program::ata().id(), Program::ata());
             this
         };
 
@@ -3019,6 +3021,7 @@ pub mod tests {
         validity_window: (Option<BlockId>, Option<BlockId>),
         block_id: BlockId,
     ) {
+        let validity_window: ValidityWindow = validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_public_account_keys_1();
         let pre = AccountWithMetadata::new(Account::default(), false, account_keys.account_id());
@@ -3027,12 +3030,7 @@ pub mod tests {
             let account_ids = vec![pre.account_id];
             let nonces = vec![];
             let program_id = validity_window_program.id();
-            let instruction = (
-                validity_window.0,
-                validity_window.1,
-                None::<Timestamp>,
-                None::<Timestamp>,
-            );
+            let instruction = validity_window;
             let message =
                 public_transaction::Message::try_new(program_id, account_ids, nonces, instruction)
                     .unwrap();
@@ -3040,7 +3038,7 @@ pub mod tests {
             PublicTransaction::new(message, witness_set)
         };
         let result = state.transition_from_public_transaction(&tx, block_id, 0);
-        let is_inside_validity_window = match validity_window {
+        let is_inside_validity_window = match (validity_window.start(), validity_window.end()) {
             (Some(s), Some(e)) => s <= block_id && block_id < e,
             (Some(s), None) => s <= block_id,
             (None, Some(e)) => block_id < e,
@@ -3070,6 +3068,7 @@ pub mod tests {
         validity_window: (Option<BlockId>, Option<BlockId>),
         block_id: BlockId,
     ) {
+        let validity_window: ValidityWindow = validity_window.try_into().unwrap();
         let validity_window_program = Program::validity_window();
         let account_keys = test_private_account_keys_1();
         let pre = AccountWithMetadata::new(Account::default(), false, &account_keys.npk());
@@ -3079,12 +3078,7 @@ pub mod tests {
             let shared_secret = SharedSecretKey::new(&esk, &account_keys.vpk());
             let epk = EphemeralPublicKey::from_scalar(esk);
 
-            let instruction = (
-                validity_window.0,
-                validity_window.1,
-                None::<Timestamp>,
-                None::<Timestamp>,
-            );
+            let instruction = validity_window;
             let (output, proof) = circuit::execute_and_prove(
                 vec![pre],
                 Program::serialize_instruction(instruction).unwrap(),
@@ -3108,7 +3102,7 @@ pub mod tests {
             PrivacyPreservingTransaction::new(message, witness_set)
         };
         let result = state.transition_from_privacy_preserving_transaction(&tx, block_id, 0);
-        let is_inside_validity_window = match validity_window {
+        let is_inside_validity_window = match (validity_window.start(), validity_window.end()) {
             (Some(s), Some(e)) => s <= block_id && block_id < e,
             (Some(s), None) => s <= block_id,
             (None, Some(e)) => block_id < e,

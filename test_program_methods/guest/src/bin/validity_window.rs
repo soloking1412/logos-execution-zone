@@ -1,19 +1,14 @@
 use nssa_core::program::{
-    AccountPostState, BlockId, ProgramInput, ProgramOutput, Timestamp, read_nssa_inputs,
+    AccountPostState, ProgramInput, ProgramOutput, ValidityWindow, read_nssa_inputs,
 };
 
-type Instruction = (
-    Option<BlockId>,
-    Option<BlockId>,
-    Option<Timestamp>,
-    Option<Timestamp>,
-);
+type Instruction = ValidityWindow;
 
 fn main() {
     let (
         ProgramInput {
             pre_states,
-            instruction: (from_id, until_id, from_ts, until_ts),
+            instruction: validity_window,
         },
         instruction_words,
     ) = read_nssa_inputs::<Instruction>();
@@ -24,19 +19,11 @@ fn main() {
 
     let post = pre.account.clone();
 
-    let output = ProgramOutput::new(
+    ProgramOutput::new(
         instruction_words,
         vec![pre],
         vec![AccountPostState::new(post)],
     )
-    .valid_from_id(from_id)
-    .unwrap()
-    .valid_until_id(until_id)
-    .unwrap()
-    .valid_from_timestamp(from_ts)
-    .unwrap()
-    .valid_until_timestamp(until_ts)
-    .unwrap();
-
-    output.write();
+    .with_validity_window(validity_window)
+    .write();
 }

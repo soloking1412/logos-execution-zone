@@ -28,11 +28,11 @@ impl ExecutionState {
     pub fn derive_from_outputs(program_id: ProgramId, program_outputs: Vec<ProgramOutput>) -> Self {
         let valid_from_id = program_outputs
             .iter()
-            .filter_map(|output| output.validity_window.from())
+            .filter_map(|output| output.validity_window.start())
             .max();
         let valid_until_id = program_outputs
             .iter()
-            .filter_map(|output| output.validity_window.to())
+            .filter_map(|output| output.validity_window.end())
             .min();
         let valid_from_ts = program_outputs
             .iter()
